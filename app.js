@@ -371,7 +371,9 @@ class PlexStationarr {
                         const genres = genreData.MediaContainer.Directory || [];
                         genres.forEach(genre => {
                             if (!genreMap.has(genre.title)) genreMap.set(genre.title, []);
-                            genreMap.get(genre.title).push(genre.key);
+                            // Build a proper content path from the section + genre key
+                            const path = `/library/sections/${library.key}/all?genre=${encodeURIComponent(genre.key)}`;
+                            genreMap.get(genre.title).push(path);
                         });
                     } catch (e) { /* skip section */ }
                 }
@@ -981,7 +983,8 @@ class PlexStationarr {
     }
 
     async fetchPlexData(endpoint) {
-        const url = `${this.config.plexUrl}${endpoint}?X-Plex-Token=${this.config.plexToken}`;
+        const sep = endpoint.includes('?') ? '&' : '?';
+        const url = `${this.config.plexUrl}${endpoint}${sep}X-Plex-Token=${this.config.plexToken}`;
         
         try {
             console.log('Fetching Plex data from:', url);
