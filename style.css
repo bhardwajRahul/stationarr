@@ -467,43 +467,30 @@ body {
     align-items: center;
     cursor: pointer;
     transition: filter 0.15s;
-    border-left: 2px solid transparent;
-    border-right: 1px solid rgba(0,0,0,0.25);
+    border: 1px solid #2a2a2a;
     margin-right: 1px;
     overflow: hidden;
     position: relative;
 }
 
-/* Movies — dark green */
-.program[data-media-type="movie"] {
-    background: linear-gradient(160deg, #091b0d 0%, #0d2416 100%);
-    border-left-color: #2a7d42;
-}
-.program[data-media-type="movie"]:hover { filter: brightness(1.4); }
-
-/* TV shows — dark blue */
-.program[data-media-type="episode"] {
-    background: linear-gradient(160deg, #090f1e 0%, #0c1830 100%);
-    border-left-color: #2d5fa8;
-}
-.program[data-media-type="episode"]:hover { filter: brightness(1.45); }
-
-/* Unclassified */
+/* All non-active bars — flat dark surface */
+.program[data-media-type="movie"],
+.program[data-media-type="episode"],
 .program:not([data-media-type]) {
     background: var(--surface-2);
-    border-left-color: var(--border-md);
 }
-.program:not([data-media-type]):hover { filter: brightness(1.3); }
+.program:hover { filter: brightness(1.35); }
 
 /* Upcoming — dimmed */
-.program.upcoming { opacity: 0.6; }
+.program.upcoming { opacity: 0.55; }
 
-/* Currently airing */
+/* Currently airing — accent highlight only */
 .program.current {
-    background: linear-gradient(160deg, #3d1e00 0%, #5c2c00 100%) !important;
-    border-left-color: var(--accent) !important;
+    background: linear-gradient(160deg, #221d00 0%, #2e2700 100%) !important;
+    border-color: #4a4000 !important;
+    box-shadow: none;
 }
-.program.current:hover { filter: brightness(1.25) !important; }
+.program.current:hover { filter: brightness(1.2) !important; }
 
 /* Play chevron on hover */
 .program::after {
@@ -558,7 +545,7 @@ body {
 
 .program-episode {
     font-size: 0.7rem;
-    color: #7eb8f7;
+    color: var(--text-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

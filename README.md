@@ -140,6 +140,7 @@ This is an active development project with ongoing improvements:
 - ✅ Settings panel redesigned with collapsible accordion sections and All/None list buttons
 - ✅ HLS EPG resume: offset embedded in transcode URL so Plex starts segments at the right position
 - ✅ Modern UI redesign: Plex-inspired dark theme with CSS design tokens, Inter font, refined typography and spacing
+- ✅ Program bar styling: uniform dark background for all bars; active/currently-airing bars highlighted with warm yellow accent border and background
 
 ## Contributing
 
