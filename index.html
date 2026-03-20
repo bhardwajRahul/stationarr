@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plex Stationarr - EPG</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <h1>Plex Stationarr</h1>
+            </div>
+            <div class="controls">
+                <button id="configBtn" class="config-btn">⚙️ Settings</button>
+            </div>
+        </header>
+
+        <!-- Loading Progress Bar -->
+        <div id="loadingProgress" class="loading-progress">
+            <div class="progress-content">
+                <div class="progress-title">Loading Plex Stationarr...</div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">Initializing...</div>
+            </div>
+        </div>
+
+        <div class="main-container">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Channels</h2>
+                </div>
+                <div class="channels-list" id="channelsList">
+                    <div class="loading">Loading channels...</div>
+                </div>
+            </aside>
+
+            <main class="content">
+                <div class="timeline-header" id="timelineHeader">
+                    <div class="time-slots"></div>
+                </div>
+                <div class="epg-container" id="epgContainer">
+                    <div class="program-grid" id="programGrid">
+                        <div class="loading">Loading programming data...</div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Configuration Modal -->
+        <div id="configModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Configuration</h3>
+                    <span class="close" id="closeModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="config-section">
+                        <h4>Plex Server Settings</h4>
+                        <div class="form-group">
+                            <label for="plexUrl">Plex Server URL:</label>
+                            <input type="text" id="plexUrl" value="http://YOUR_PLEX_SERVER:32400">
+                        </div>
+                        <div class="form-group">
+                            <label for="plexToken">Plex Token:</label>
+                            <input type="password" id="plexToken" value="YOUR_PLEX_TOKEN_HERE">
+                        </div>
+                        <div class="form-group">
+                            <button id="testPlexConnection" class="btn-secondary">Test Connection</button>
+                            <span id="connectionStatus"></span>
+                        </div>
+                    </div>
+                    
+
+                    <div class="config-section">
+                        <h4>Libraries</h4>
+                        <div id="librarySelection" class="selection-checkboxes">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Video Playlists</h4>
+                        <div id="videoPlaylistSelection" class="selection-checkboxes">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Music Playlists</h4>
+                        <div id="musicPlaylistSelection" class="selection-checkboxes">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Categories</h4>
+                        <div id="categorySelection" class="selection-checkboxes">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Collections</h4>
+                        <div id="collectionSelection" class="selection-checkboxes">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Display Options</h4>
+                        <div class="form-group">
+                            <label for="timeRange">Hours to display:</label>
+                            <select id="timeRange">
+                                <option value="6">6 hours</option>
+                                <option value="12" selected>12 hours</option>
+                                <option value="24">24 hours</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Interface Settings</h4>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableTooltips" checked>
+                                Enable info popups (hover tooltips)
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="tooltipDelay">Tooltip delay:</label>
+                            <select id="tooltipDelay">
+                                <option value="500">0.5 seconds</option>
+                                <option value="1000" selected>1 second</option>
+                                <option value="2000">2 seconds</option>
+                                <option value="3000">3 seconds</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="showChannelLogos" checked>
+                                Show channel logos/icons
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="compactView">
+                                Compact view mode
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableAnimations" checked>
+                                Enable smooth animations
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Auto-Refresh</h4>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="autoRefresh" checked>
+                                Auto-refresh program data
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="autoRefreshInterval">Refresh interval:</label>
+                            <select id="autoRefreshInterval">
+                                <option value="180">3 minutes</option>
+                                <option value="300" selected>5 minutes</option>
+                                <option value="600">10 minutes</option>
+                                <option value="900">15 minutes</option>
+                                <option value="1800">30 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Playback Settings</h4>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="autoPlay">
+                                Auto-play when selecting media
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultVolume">Default volume:</label>
+                            <input type="range" id="defaultVolume" min="0" max="100" value="80" class="volume-slider">
+                            <span id="volumeDisplay">80%</span>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="rememberPosition" checked>
+                                Remember playback position
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="showPlaybackNotifications" checked>
+                                Show playback notifications
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>Advanced Settings</h4>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableDebugLogging">
+                                Enable debug logging (for troubleshooting)
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cacheContent" checked>
+                                Cache content for faster loading
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="lowBandwidthMode">
+                                Low bandwidth mode
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveConfig" class="btn-primary">Save Settings</button>
+                    <button id="cancelConfig" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Time Indicator is now created dynamically inside EPG container -->
+
+        <!-- Video Player Modal -->
+        <div id="videoPlayerModal" class="video-modal">
+            <div class="video-player-container">
+                <div class="video-header">
+                    <div class="video-info">
+                        <h3 id="videoTitle">Loading...</h3>
+                        <p id="videoMeta"></p>
+                    </div>
+                    <div class="video-controls-header">
+                        <button id="minimizePlayer" class="control-btn">⤓</button>
+                        <button id="closePlayer" class="control-btn">✕</button>
+                    </div>
+                </div>
+                
+                <div class="video-wrapper">
+                    <video id="videoPlayer" controls preload="metadata">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="video-loading" id="videoLoading">
+                        <div class="spinner"></div>
+                        <p>Loading video...</p>
+                    </div>
+                </div>
+
+                <div class="video-details" id="videoDetails">
+                    <div class="video-description">
+                        <h4>Description</h4>
+                        <p id="videoSummary">No description available.</p>
+                    </div>
+                    <div class="video-metadata">
+                        <div class="metadata-item">
+                            <span class="label">Duration:</span>
+                            <span id="videoDuration">--</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="label">Year:</span>
+                            <span id="videoYear">--</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="label">Rating:</span>
+                            <span id="videoRating">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Minimized Player -->
+        <div id="minimizedPlayer" class="minimized-player">
+            <div class="mini-player-content">
+                <video id="miniVideo" muted></video>
+                <div class="mini-controls">
+                    <button id="miniPlayPause" class="mini-btn">⏸️</button>
+                    <span id="miniTitle">Video Title</span>
+                    <button id="restorePlayer" class="mini-btn">⤴</button>
+                    <button id="closeMiniPlayer" class="mini-btn">✕</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
