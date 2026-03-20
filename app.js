@@ -26,7 +26,8 @@ class PlexStationarr {
             total: 0,
             step: ''
         };
-        
+        this.epgScale = this.config.ui.epgScale ?? 1.0;
+
         this.init();
     }
 
@@ -61,7 +62,8 @@ class PlexStationarr {
                 showChannelLogos: true,
                 enableAnimations: true,
                 showPosters: true,
-                channelHeightScale: 1.0 // Scale factor for channel height (0.5 - 2.0)
+                channelHeightScale: 1.0, // Scale factor for channel height (0.5 - 2.0)
+                epgScale: 1.0            // Scale factor for EPG time zoom (0.3 - 3.0)
             },
             playback: {
                 autoPlay: false,
@@ -171,6 +173,8 @@ class PlexStationarr {
         const saveConfig = document.getElementById('saveConfig');
         const cancelConfig = document.getElementById('cancelConfig');
         const testPlexConnection = document.getElementById('testPlexConnection');
+
+        this.setupEpgScaleHandle();
 
         const searchInput = document.getElementById('searchInput');
         const searchClear = document.getElementById('searchClear');
@@ -1102,26 +1106,36 @@ class PlexStationarr {
         const timeSlotsContainer = container.querySelector('.time-slots');
         timeSlotsContainer.innerHTML = '';
 
-        this.timeSlots.forEach(time => {
+        const ppm = 4 * this.epgScale;
+        // Snap interval: 15min when zoomed in, 60min when zoomed out
+        const interval = this.epgScale >= 1.5 ? 15 : (this.epgScale >= 0.7 ? 30 : 60);
+        const slotWidth = Math.round(interval * ppm);
+
+        const startTime = new Date(this.timeSlots[0]);
+        const endTime = new Date(this.timeSlots[this.timeSlots.length - 1]);
+        endTime.setMinutes(endTime.getMinutes() + 30);
+
+        const now = new Date();
+        const current = new Date(startTime);
+        while (current <= endTime) {
             const slot = document.createElement('div');
             slot.className = 'time-slot';
-            
-            const now = new Date();
-            const isCurrentHour = time.getHours() === now.getHours() && 
-                                 time.getDate() === now.getDate();
-            
-            if (isCurrentHour) {
+            slot.style.minWidth = `${slotWidth}px`;
+            slot.style.width = `${slotWidth}px`;
+
+            if (current.getHours() === now.getHours() && current.getDate() === now.getDate()) {
                 slot.classList.add('current');
             }
 
-            slot.textContent = time.toLocaleTimeString('en-US', {
+            slot.textContent = current.toLocaleTimeString('en-US', {
                 hour12: false,
                 hour: '2-digit',
                 minute: '2-digit'
             });
 
             timeSlotsContainer.appendChild(slot);
-        });
+            current.setMinutes(current.getMinutes() + interval);
+        }
     }
 
     renderProgramGrid(container) {
@@ -1327,13 +1341,8 @@ class PlexStationarr {
     }
 
     calculateProgramWidth(durationMinutes) {
-        // Each 30-minute slot is 120px wide in the original design
-        const pixelsPerMinute = 120 / 30; // 4 pixels per minute
-        const minWidth = 60; // Minimum width for readability
-        const maxWidth = 480; // Maximum width for very long content
-        
-        const calculatedWidth = durationMinutes * pixelsPerMinute;
-        return Math.max(minWidth, Math.min(maxWidth, calculatedWidth));
+        const pixelsPerMinute = 4 * this.epgScale;
+        return Math.max(40, durationMinutes * pixelsPerMinute);
     }
 
     showProgramDetails(program, channel) {
@@ -1531,6 +1540,8 @@ class PlexStationarr {
         document.getElementById('showPosters').checked = this.config.ui.showPosters;
         document.getElementById('channelHeightScale').value = this.config.ui.channelHeightScale;
         document.getElementById('channelHeightDisplay').textContent = Math.round(this.config.ui.channelHeightScale * 100) + '%';
+        document.getElementById('epgScaleSetting').value = this.config.ui.epgScale;
+        document.getElementById('epgScaleDisplay').textContent = Math.round(this.config.ui.epgScale * 100) + '%';
 
         // Populate auto-refresh settings
         document.getElementById('autoRefresh').checked = this.config.ui.autoRefresh;
@@ -1561,8 +1572,16 @@ class PlexStationarr {
         channelHeightSlider.addEventListener('input', () => {
             const scale = parseFloat(channelHeightSlider.value);
             channelHeightDisplay.textContent = Math.round(scale * 100) + '%';
-            // Apply scale immediately for preview
             this.applyChannelHeightScale(scale);
+        });
+
+        // Add EPG scale slider listener
+        const epgScaleSlider = document.getElementById('epgScaleSetting');
+        const epgScaleDisplay = document.getElementById('epgScaleDisplay');
+        epgScaleSlider.addEventListener('input', () => {
+            const scale = parseFloat(epgScaleSlider.value);
+            epgScaleDisplay.textContent = Math.round(scale * 100) + '%';
+            this.applyEpgScale(scale);
         });
 
         // Populate library selection
@@ -1747,6 +1766,7 @@ class PlexStationarr {
         this.config.ui.enableAnimations = document.getElementById('enableAnimations').checked;
         this.config.ui.showPosters = document.getElementById('showPosters').checked;
         this.config.ui.channelHeightScale = parseFloat(document.getElementById('channelHeightScale').value);
+        this.config.ui.epgScale = parseFloat(document.getElementById('epgScaleSetting').value);
         this.config.ui.autoRefresh = document.getElementById('autoRefresh').checked;
         this.config.ui.autoRefreshInterval = parseInt(document.getElementById('autoRefreshInterval').value);
 
@@ -1877,6 +1897,68 @@ class PlexStationarr {
         });
         
         console.log(`Applied channel height scale: ${scaleValue} (${scaledHeight}px)`);
+    }
+
+    applyEpgScale(scale) {
+        this.epgScale = scale;
+        this.config.ui.epgScale = scale;
+        const ppm = 4 * scale;
+
+        // Update all program widths live
+        document.querySelectorAll('.program').forEach(p => {
+            const duration = parseInt(p.dataset.duration);
+            if (!duration) return;
+            const width = Math.max(40, duration * ppm);
+            p.style.width = `${width}px`;
+            p.style.minWidth = `${width}px`;
+        });
+
+        // Scale bar height proportionally (clamped to existing 0.5–2.0 range)
+        const heightScale = Math.max(0.5, Math.min(2.0, scale));
+        this.applyChannelHeightScale(heightScale);
+
+        // Re-render time labels with new interval/width
+        const timelineHeader = document.getElementById('timelineHeader');
+        if (timelineHeader) this.renderTimeSlots(timelineHeader);
+
+        // Keep settings slider in sync if open
+        const slider = document.getElementById('epgScaleSetting');
+        const display = document.getElementById('epgScaleDisplay');
+        if (slider) slider.value = scale;
+        if (display) display.textContent = Math.round(scale * 100) + '%';
+    }
+
+    setupEpgScaleHandle() {
+        const handle = document.getElementById('epgScaleHandle');
+        if (!handle) return;
+
+        let isDragging = false;
+        let startX = 0;
+        let startScale = this.epgScale;
+
+        handle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startScale = this.epgScale;
+            handle.classList.add('dragging');
+            document.body.style.cursor = 'ew-resize';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - startX;
+            const newScale = Math.max(0.3, Math.min(3.0, startScale + deltaX / 150));
+            this.applyEpgScale(newScale);
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            handle.classList.remove('dragging');
+            document.body.style.cursor = '';
+            this.saveSettings();
+        });
     }
 
     setupChannelResizeHandle(handle) {

@@ -343,6 +343,61 @@ body {
     font-weight: 600;
 }
 
+.epg-scale-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 280px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: ew-resize;
+    user-select: none;
+    z-index: 5;
+    border-right: 2px solid #404040;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.epg-scale-handle:hover {
+    background: rgba(229, 160, 13, 0.08);
+    border-right-color: #e5a00d;
+}
+
+.epg-scale-handle.dragging {
+    background: rgba(229, 160, 13, 0.12);
+    border-right-color: #e5a00d;
+}
+
+.epg-scale-icon {
+    font-size: 1.2rem;
+    color: #666;
+    pointer-events: none;
+    transition: color 0.15s;
+    line-height: 1;
+}
+
+.epg-scale-label {
+    font-size: 0.65rem;
+    color: #555;
+    pointer-events: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: color 0.15s;
+}
+
+.epg-scale-handle:hover .epg-scale-icon,
+.epg-scale-handle.dragging .epg-scale-icon {
+    color: #e5a00d;
+}
+
+.epg-scale-handle:hover .epg-scale-label,
+.epg-scale-handle.dragging .epg-scale-label {
+    color: #e5a00d;
+}
+
 .epg-container {
     flex: 1;
     overflow-x: auto; /* Keep horizontal scrolling for timeline */

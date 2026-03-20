@@ -54,6 +54,11 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Settings Method**: Use the "Channel height scale" slider in Settings → Interface Settings
 - **Interactive Method**: Hover over any channel and drag the golden resize handle at the bottom
 
+### EPG Time Scale
+- **Drag Handle**: Click and drag the "⟺ Scale" handle on the left of the time bar — drag right to zoom in (15-min slots, taller bars), drag left to zoom out (60-min slots, shorter bars)
+- **Settings Method**: Use the "EPG time scale" slider in Settings → Interface Settings
+- Scale persists across page reloads (saved to localStorage)
+
 ### Content Types
 - **Libraries**: Your Plex movie and TV libraries
 - **Video Playlists**: Plex video playlists you've created
@@ -122,6 +127,7 @@ This is an active development project with ongoing improvements:
 - ✅ Enhanced tooltips with posters
 - ✅ TV show episode expansion
 - ✅ Live search with clear button
+- ✅ Interactive EPG time scale (drag handle + settings slider, persisted)
 - ✅ Color-coded program bars (movies/TV shows/currently playing)
 - 🔄 Current time indicator (in progress)
 
