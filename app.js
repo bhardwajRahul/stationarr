@@ -201,6 +201,24 @@ class PlexStationarr {
         cancelConfig.addEventListener('click', () => this.closeConfigModal());
         testPlexConnection.addEventListener('click', () => this.testPlexConnectionManual());
 
+        // Accordion toggle
+        configModal.addEventListener('click', (e) => {
+            const header = e.target.closest('.acc-header');
+            if (header) {
+                header.closest('.acc-item').classList.toggle('open');
+            }
+        });
+
+        // All / None buttons for content lists
+        configModal.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-tiny');
+            if (!btn) return;
+            const listId = btn.dataset.selectAll || btn.dataset.selectNone;
+            const checked = !!btn.dataset.selectAll;
+            const list = document.getElementById(listId);
+            if (list) list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = checked);
+        });
+
         configModal.addEventListener('click', (e) => {
             if (e.target === configModal) {
                 this.closeConfigModal();
@@ -1705,120 +1723,49 @@ class PlexStationarr {
             this.applyEpgScale(scale);
         });
 
+        const makeList = (containerId, items, emptyMsg, itemHtml) => {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (items.length === 0) {
+                container.innerHTML = `<p class="no-content">${emptyMsg}</p>`;
+            } else {
+                [...items].sort((a, b) => a.title.localeCompare(b.title)).forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'selection-item';
+                    div.innerHTML = itemHtml(item);
+                    container.appendChild(div);
+                });
+            }
+        };
+
         // Populate library selection
-        const librarySelection = document.getElementById('librarySelection');
-        librarySelection.innerHTML = '';
-        
-        if (this.availableLibraries.length === 0) {
-            librarySelection.innerHTML = '<p class="no-content">No libraries found. Check Plex connection.</p>';
-        } else {
-            this.availableLibraries.forEach(library => {
-                const checkboxContainer = document.createElement('div');
-                checkboxContainer.className = 'selection-item';
-                
-                checkboxContainer.innerHTML = `
-                    <label>
-                        <input type="checkbox" id="library_${library.key}" 
-                               ${this.config.selectedLibraries.has(library.id) ? 'checked' : ''}>
-                        ${library.title} (${library.type})
-                    </label>
-                `;
-                
-                librarySelection.appendChild(checkboxContainer);
-            });
-        }
+        makeList('librarySelection', this.availableLibraries,
+            'No libraries found. Check Plex connection.',
+            lib => `<label><input type="checkbox" id="library_${lib.key}" ${this.config.selectedLibraries.has(lib.id) ? 'checked' : ''}> ${lib.title} <span class="playlist-type">(${lib.type})</span></label>`
+        );
 
         // Populate video playlist selection
-        const videoPlaylistSelection = document.getElementById('videoPlaylistSelection');
-        videoPlaylistSelection.innerHTML = '';
-        
-        if (this.availableVideoPlaylists.length === 0) {
-            videoPlaylistSelection.innerHTML = '<p class="no-content">No video playlists found.</p>';
-        } else {
-            this.availableVideoPlaylists.forEach(playlist => {
-                const checkboxContainer = document.createElement('div');
-                checkboxContainer.className = 'selection-item';
-                
-                checkboxContainer.innerHTML = `
-                    <label>
-                        <input type="checkbox" id="video_playlist_${playlist.ratingKey}" 
-                               ${this.config.selectedVideoPlaylists.has(playlist.id) ? 'checked' : ''}>
-                        ${playlist.title} <span class="playlist-type">(${playlist.playlistType || playlist.type})</span>
-                    </label>
-                `;
-                
-                videoPlaylistSelection.appendChild(checkboxContainer);
-            });
-        }
+        makeList('videoPlaylistSelection', this.availableVideoPlaylists,
+            'No video playlists found.',
+            pl => `<label><input type="checkbox" id="video_playlist_${pl.ratingKey}" ${this.config.selectedVideoPlaylists.has(pl.id) ? 'checked' : ''}> ${pl.title}</label>`
+        );
 
         // Populate music playlist selection
-        const musicPlaylistSelection = document.getElementById('musicPlaylistSelection');
-        musicPlaylistSelection.innerHTML = '';
-        
-        if (this.availableMusicPlaylists.length === 0) {
-            musicPlaylistSelection.innerHTML = '<p class="no-content">No music playlists found.</p>';
-        } else {
-            this.availableMusicPlaylists.forEach(playlist => {
-                const checkboxContainer = document.createElement('div');
-                checkboxContainer.className = 'selection-item';
-                
-                checkboxContainer.innerHTML = `
-                    <label>
-                        <input type="checkbox" id="music_playlist_${playlist.ratingKey}" 
-                               ${this.config.selectedMusicPlaylists.has(playlist.id) ? 'checked' : ''}>
-                        ${playlist.title} <span class="playlist-type">(${playlist.playlistType || playlist.type})</span>
-                    </label>
-                `;
-                
-                musicPlaylistSelection.appendChild(checkboxContainer);
-            });
-        }
+        makeList('musicPlaylistSelection', this.availableMusicPlaylists,
+            'No music playlists found.',
+            pl => `<label><input type="checkbox" id="music_playlist_${pl.ratingKey}" ${this.config.selectedMusicPlaylists.has(pl.id) ? 'checked' : ''}> ${pl.title}</label>`
+        );
 
-        // Populate category selection
-        const categorySelection = document.getElementById('categorySelection');
-        categorySelection.innerHTML = '';
-        
-        if (this.availableCategories.length === 0) {
-            categorySelection.innerHTML = '<p class="no-content">No categories found.</p>';
-        } else {
-            this.availableCategories.forEach(category => {
-                const checkboxContainer = document.createElement('div');
-                checkboxContainer.className = 'selection-item';
-                
-                checkboxContainer.innerHTML = `
-                    <label>
-                        <input type="checkbox" id="cb_${category.id}"
-                               ${this.config.selectedCategories.has(category.id) ? 'checked' : ''}>
-                        ${category.title}
-                    </label>
-                `;
-                
-                categorySelection.appendChild(checkboxContainer);
-            });
-        }
+        // Categories already sorted alphabetically from discovery
+        makeList('categorySelection', this.availableCategories,
+            'No categories found.',
+            cat => `<label><input type="checkbox" id="cb_${cat.id}" ${this.config.selectedCategories.has(cat.id) ? 'checked' : ''}> ${cat.title}</label>`
+        );
 
-        // Populate collection selection
-        const collectionSelection = document.getElementById('collectionSelection');
-        collectionSelection.innerHTML = '';
-        
-        if (this.availableCollections.length === 0) {
-            collectionSelection.innerHTML = '<p class="no-content">No collections found.</p>';
-        } else {
-            this.availableCollections.forEach(collection => {
-                const checkboxContainer = document.createElement('div');
-                checkboxContainer.className = 'selection-item';
-                
-                checkboxContainer.innerHTML = `
-                    <label>
-                        <input type="checkbox" id="collection_${collection.key}" 
-                               ${this.config.selectedCollections.has(collection.id) ? 'checked' : ''}>
-                        ${collection.title}
-                    </label>
-                `;
-                
-                collectionSelection.appendChild(checkboxContainer);
-            });
-        }
+        makeList('collectionSelection', this.availableCollections,
+            'No collections found.',
+            col => `<label><input type="checkbox" id="collection_${col.key}" ${this.config.selectedCollections.has(col.id) ? 'checked' : ''}> ${col.title}</label>`
+        );
     }
 
     async testPlexConnectionManual() {

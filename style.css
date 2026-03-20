@@ -692,14 +692,105 @@ body {
     overflow-y: auto;
 }
 
-.config-section {
-    margin-bottom: 2rem;
+/* Settings accordion */
+.settings-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
-.config-section h4 {
+.acc-item {
+    border: 1px solid #404040;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.acc-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    background: #333;
+    border: none;
     color: #e5a00d;
-    margin-bottom: 1rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.15s ease;
+}
+
+.acc-header:hover {
+    background: #3a3a3a;
+}
+
+.acc-arrow {
+    font-size: 0.7rem;
+    transition: transform 0.2s ease;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.acc-item:not(.open) .acc-arrow {
+    transform: rotate(-90deg);
+}
+
+.acc-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    padding: 0 1rem;
+    background: #2d2d2d;
+}
+
+.acc-item.open .acc-body {
+    max-height: 2000px;
+    padding: 1rem;
+}
+
+/* Content subsections (Libraries, Playlists, etc.) */
+.content-subsection {
+    margin-bottom: 1.25rem;
+}
+
+.content-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.subsection-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    color: #aaa;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.select-btns {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.btn-tiny {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-tiny:hover {
+    border-color: #e5a00d;
+    color: #e5a00d;
 }
 
 .form-group {
