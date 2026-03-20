@@ -81,20 +81,14 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 
 ## Configuration
 
-Use the settings panel (⚙️ button) to configure:
+Use the settings panel (⚙️ button) to configure. The panel is organised into collapsible sections:
 
-- **Plex Server**: URL and authentication token
-- **Content Selection**: Libraries, video playlists, music playlists, categories, and collections
-- **Display Options**: Time range (6, 12, or 24 hours)
-- **Interface Settings**:
-  - Tooltips with configurable delay
-  - EPG time scale (30%-300%)
-  - Poster artwork display toggle
-  - Animations and visual effects
-  - Group channels by type (collapsible sections)
-- **Playback Settings**: Auto-play, volume, position memory, notifications, EPG-aware resume
-- **Auto-refresh**: Automatic content updates — 30 min, 1 hour, 4 hours (default), or 8 hours
-- **Advanced Options**: Debug logging, content caching, low bandwidth mode
+- **Server**: Plex URL, authentication token, and connection test
+- **Content**: Hours to display; Libraries, Video Playlists, Music Playlists, Categories, and Collections — each list sorted alphabetically with All / None selection buttons
+- **Display**: EPG time scale, channel grouping, posters, logos, animations, tooltips
+- **Playback**: Broadcast-position resume, position memory, auto-play, notifications, volume
+- **Auto-Refresh**: Toggle and interval (30 min, 1 hour, 4 hours default, 8 hours)
+- **Advanced**: Content caching, low bandwidth mode, debug logging
 
 ## Technical Details
 
@@ -143,6 +137,7 @@ This is an active development project with ongoing improvements:
 - ✅ Current time indicator aligned to time bar
 - ✅ Channel grouping by type with collapsible sections (alphabetically sorted, state persisted)
 - ✅ Show-type items auto-resolve to first episode for playback
+- ✅ Settings panel redesigned with collapsible accordion sections and All/None list buttons
 
 ## Contributing
 
