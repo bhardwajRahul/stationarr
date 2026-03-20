@@ -130,7 +130,8 @@ This is an active development project with ongoing improvements:
 - ✅ Settings management
 - ✅ Auto-refresh
 - ✅ Playlist support (video and music)
-- ✅ Collections and Categories support
+- ✅ Collections support
+- ✅ Categories as library genres (Biography, Comedy, etc.) merged across sections
 - ✅ Media artwork integration
 - ✅ Interactive channel resizing
 - ✅ Enhanced tooltips with posters
@@ -141,6 +142,7 @@ This is an active development project with ongoing improvements:
 - ✅ EPG-aware playback resume (seek to live position on click)
 - ✅ Current time indicator aligned to time bar
 - ✅ Channel grouping by type with collapsible sections (alphabetically sorted, state persisted)
+- ✅ Show-type items auto-resolve to first episode for playback
 
 ## Contributing
 
