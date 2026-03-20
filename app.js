@@ -2300,12 +2300,7 @@ class PlexStationarr {
     }
 
     showVideoPlayer() {
-        const videoModal = document.getElementById('videoPlayerModal');
-        const minimizedPlayer = document.getElementById('minimizedPlayer');
-        
-        videoModal.classList.add('show');
-        minimizedPlayer.classList.remove('show');
-        this.isMinimized = false;
+        // Player overlay disabled — playback runs silently in background
     }
 
     updateVideoInfo(mediaItem, channel) {
