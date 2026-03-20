@@ -6,7 +6,7 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 
 - **EPG-Style Interface**: Browse your media in a familiar TV guide layout
 - **Real-time Updates**: Auto-refresh content with configurable intervals
-- **Video Playback**: Stream media directly in the browser with position memory
+- **Video Playback**: Stream media directly in the browser with position memory and EPG-aware resume
 - **Comprehensive Content Types**: Libraries, video playlists, music playlists, categories, and collections
 - **Media Artwork**: Plex poster integration in program bars and tooltips
 - **Color-coded Program Bars**: Movies in green, TV shows in blue, currently playing highlighted in orange
@@ -65,6 +65,11 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Music Playlists**: Plex music playlists (audio only)
 - **Categories**: Plex recommendation hubs (trending, recently added, etc.)
 - **Collections**: User-created movie/TV collections
+
+### EPG-Aware Playback Resume
+- Clicking a currently-airing media bar automatically seeks to the live broadcast position
+- Toggle via **Settings → Playback Settings → Resume from current broadcast position**
+- Falls back to last saved position if the setting is off or the program hasn't started yet
 
 ### Media Artwork
 - Toggle poster display in Settings → Interface Settings
@@ -129,7 +134,8 @@ This is an active development project with ongoing improvements:
 - ✅ Live search with clear button
 - ✅ Interactive EPG time scale (drag handle + settings slider, persisted)
 - ✅ Color-coded program bars (movies/TV shows/currently playing)
-- 🔄 Current time indicator (in progress)
+- ✅ EPG-aware playback resume (seek to live position on click)
+- ✅ Current time indicator aligned to time bar
 
 ## Contributing
 

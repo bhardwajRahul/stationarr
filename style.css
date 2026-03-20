@@ -226,12 +226,13 @@ body {
 }
 
 .sidebar-header {
-    padding: 0.5rem 1rem; /* Match timeline-header vertical padding */
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
     border-bottom: 1px solid #404040;
     height: 60px; /* Match timeline-header height */
     box-sizing: border-box;
     display: flex;
     align-items: center;
+    justify-content: space-between;
 }
 
 .sidebar-header h2 {
@@ -322,12 +323,12 @@ body {
 
 .time-slots {
     display: flex;
-    padding-left: 280px;
     min-width: fit-content;
 }
 
 .time-slot {
     min-width: 120px;
+    box-sizing: border-box;
     text-align: center;
     padding: 0.5rem;
     border-right: 1px solid #404040;
@@ -344,11 +345,6 @@ body {
 }
 
 .epg-scale-handle {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 280px;
-    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -356,19 +352,18 @@ body {
     gap: 2px;
     cursor: ew-resize;
     user-select: none;
-    z-index: 5;
-    border-right: 2px solid #404040;
-    transition: background 0.15s, border-color 0.15s;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-left: auto;
+    transition: background 0.15s;
 }
 
 .epg-scale-handle:hover {
-    background: rgba(229, 160, 13, 0.08);
-    border-right-color: #e5a00d;
+    background: rgba(229, 160, 13, 0.12);
 }
 
 .epg-scale-handle.dragging {
-    background: rgba(229, 160, 13, 0.12);
-    border-right-color: #e5a00d;
+    background: rgba(229, 160, 13, 0.18);
 }
 
 .epg-scale-icon {

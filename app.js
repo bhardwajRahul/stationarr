@@ -69,7 +69,8 @@ class PlexStationarr {
                 autoPlay: false,
                 defaultVolume: 80,
                 rememberPosition: true,
-                showPlaybackNotifications: true
+                showPlaybackNotifications: true,
+                resumeFromCurrentPosition: true
             },
             advanced: {
                 enableDebugLogging: false,
@@ -1362,9 +1363,8 @@ class PlexStationarr {
         
         // Calculate minutes from EPG start time to current time
         const minutesFromEpgStart = (now - epgStartTime) / (1000 * 60);
-        
-        // Each 30-minute slot is 120px wide
-        const pixelsPerMinute = 120 / 30; // 4 pixels per minute
+
+        const pixelsPerMinute = 4 * this.epgScale;
         const position = minutesFromEpgStart * pixelsPerMinute;
         
         // Debug disabled
@@ -1553,6 +1553,7 @@ class PlexStationarr {
         document.getElementById('volumeDisplay').textContent = this.config.playback.defaultVolume + '%';
         document.getElementById('rememberPosition').checked = this.config.playback.rememberPosition;
         document.getElementById('showPlaybackNotifications').checked = this.config.playback.showPlaybackNotifications;
+        document.getElementById('resumeFromCurrentPosition').checked = this.config.playback.resumeFromCurrentPosition;
 
         // Populate advanced settings
         document.getElementById('enableDebugLogging').checked = this.config.advanced.enableDebugLogging;
@@ -1775,6 +1776,7 @@ class PlexStationarr {
         this.config.playback.defaultVolume = parseInt(document.getElementById('defaultVolume').value);
         this.config.playback.rememberPosition = document.getElementById('rememberPosition').checked;
         this.config.playback.showPlaybackNotifications = document.getElementById('showPlaybackNotifications').checked;
+        this.config.playback.resumeFromCurrentPosition = document.getElementById('resumeFromCurrentPosition').checked;
 
         // Save advanced settings
         this.config.advanced.enableDebugLogging = document.getElementById('enableDebugLogging').checked;
@@ -1920,6 +1922,9 @@ class PlexStationarr {
         // Re-render time labels with new interval/width
         const timelineHeader = document.getElementById('timelineHeader');
         if (timelineHeader) this.renderTimeSlots(timelineHeader);
+
+        // Reposition current time line
+        this.updateCurrentTimeLine();
 
         // Keep settings slider in sync if open
         const slider = document.getElementById('epgScaleSetting');
@@ -2189,24 +2194,27 @@ class PlexStationarr {
                 throw new Error('No valid stream URL found');
             }
             
+            // Calculate EPG offset: how far into the program we currently are
+            let startOffset = 0;
+            if (this.config.playback.resumeFromCurrentPosition && program.startTime) {
+                const elapsed = (new Date() - program.startTime) / 1000;
+                if (elapsed > 0 && elapsed < program.duration * 60) {
+                    startOffset = Math.floor(elapsed);
+                    console.log(`Resuming from EPG position: ${startOffset}s into program`);
+                }
+            }
+
             this.updateVideoInfo(mediaItem, channel);
-            this.loadVideo(streamUrl, mediaItem);
-            
+            this.loadVideo(streamUrl, mediaItem, startOffset);
+
         } catch (error) {
             console.error('Error playing program:', error);
             this.showVideoError(`Unable to load Plex video: ${error.message}. Using demo video instead.`);
-            
-            // Fallback to demo video - but preserve episode metadata if available
+
             const demoUrl = this.getMockVideoUrl(program.title);
-            
-            // Use mediaItem (which has episode metadata) if available, otherwise fall back to program
             const displayItem = mediaItem || program;
-            console.log('Fallback - original program:', program);
-            console.log('Fallback - enhanced mediaItem:', mediaItem);
-            console.log('Fallback - using displayItem:', displayItem);
-            
             this.updateVideoInfo(displayItem, channel);
-            this.loadVideo(demoUrl, displayItem);
+            this.loadVideo(demoUrl, displayItem, 0);
         }
     }
 
@@ -2453,7 +2461,7 @@ class PlexStationarr {
         return 0;
     }
 
-    loadVideo(streamUrl, mediaItem) {
+    loadVideo(streamUrl, mediaItem, startOffset = 0) {
         this.videoPlayer = document.getElementById('videoPlayer');
         const miniVideo = document.getElementById('miniVideo');
         
@@ -2482,25 +2490,45 @@ class PlexStationarr {
                 console.log('Video can play');
                 this.showVideoLoading(false);
                 
-                // Restore playback position if enabled (only once per video load)
                 if (!this.positionRestored) {
-                    const savedPosition = this.getPlaybackPosition(mediaItem);
-                    if (savedPosition > 10) { // Only restore if more than 10 seconds
-                        this.videoPlayer.currentTime = savedPosition;
-                        if (this.config.playback.showPlaybackNotifications) {
-                            this.showNotification(`Resumed from ${this.formatDuration(savedPosition * 1000)}`, 'info');
+                    this.positionRestored = true;
+
+                    // Determine seek target: EPG offset > saved position > none
+                    let seekTo = -1;
+                    let seekMsg = null;
+                    if (startOffset > 0) {
+                        seekTo = startOffset;
+                        seekMsg = `Resuming from ${this.formatDuration(startOffset * 1000)} into broadcast`;
+                    } else {
+                        const savedPosition = this.getPlaybackPosition(mediaItem);
+                        if (savedPosition > 10) {
+                            seekTo = savedPosition;
+                            seekMsg = `Resumed from ${this.formatDuration(savedPosition * 1000)}`;
                         }
                     }
-                    this.positionRestored = true;
-                }
-                
-                // Auto-play if enabled
-                if (this.config.playback.autoPlay) {
-                    console.log('Auto-play enabled, starting video');
-                    this.videoPlayer.play().catch(error => {
-                        console.warn('Auto-play failed:', error);
-                        this.showNotification('Auto-play failed. Click play to start video.', 'warning');
-                    });
+
+                    const applySeek = () => {
+                        if (seekTo > 0) {
+                            this.videoPlayer.currentTime = seekTo;
+                            if (this.config.playback.showPlaybackNotifications && seekMsg) {
+                                this.showNotification(seekMsg, 'info');
+                            }
+                        }
+                    };
+
+                    if (this.config.playback.autoPlay) {
+                        // Play first (keeps us inside the user-gesture context),
+                        // then seek once playback has actually started
+                        this.videoPlayer.play().then(() => {
+                            applySeek();
+                        }).catch(error => {
+                            console.warn('Auto-play failed:', error);
+                            // Still apply seek so manual playback starts at the right spot
+                            applySeek();
+                        });
+                    } else {
+                        applySeek();
+                    }
                 }
             });
             
