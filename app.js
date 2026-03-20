@@ -2164,15 +2164,6 @@ class PlexStationarr {
                 }
             }
 
-            // Try multiple streaming URL approaches
-            streamUrl = await this.getStreamUrl(mediaItem);
-            
-            console.log('Generated stream URL:', streamUrl);
-            
-            if (!streamUrl) {
-                throw new Error('No valid stream URL found');
-            }
-            
             // Calculate EPG offset: how far into the program we currently are
             let startOffset = 0;
             if (this.config.playback.resumeFromCurrentPosition && program.startTime) {
@@ -2183,8 +2174,19 @@ class PlexStationarr {
                 }
             }
 
+            // Pass startOffset so HLS transcode URL embeds it as offset param
+            streamUrl = await this.getStreamUrl(mediaItem, startOffset);
+
+            console.log('Generated stream URL:', streamUrl);
+
+            if (!streamUrl) {
+                throw new Error('No valid stream URL found');
+            }
+
             this.updateVideoInfo(mediaItem, channel);
-            this.loadVideo(streamUrl, mediaItem, startOffset);
+            // For HLS streams Plex handles the offset server-side; direct streams still need client seek
+            const clientSeek = streamUrl.includes('.m3u8') ? 0 : startOffset;
+            this.loadVideo(streamUrl, mediaItem, clientSeek);
 
         } catch (error) {
             console.error('Error playing program:', error);
@@ -2197,7 +2199,7 @@ class PlexStationarr {
         }
     }
 
-    async getStreamUrl(mediaItem) {
+    async getStreamUrl(mediaItem, startOffset = 0) {
         console.log('=== GETTING STREAM URL ===');
         console.log('Media item:', mediaItem);
         
@@ -2266,6 +2268,7 @@ class PlexStationarr {
                 audioCodec: 'aac',
                 maxVideoBitrate: '8000',
                 videoResolution: '1920x1080',
+                offset: String(startOffset), // start transcode from this position
                 session: sessionId,
                 'X-Plex-Token': this.config.plexToken,
                 'X-Plex-Client-Identifier': 'plex-stationarr-webapp',
