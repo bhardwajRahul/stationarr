@@ -693,7 +693,7 @@ class PlexStationarr {
                         }
                         console.log(`Loading category: ${category.title}`);
                         try {
-                            const categoryData = await this.fetchPlexData(`/hubs/${category.key}`);
+                            const categoryData = await this.fetchPlexData(category.key);
                             const content = categoryData.MediaContainer.Metadata || [];
                             channels.push({
                                 id: category.id,
