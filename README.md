@@ -67,6 +67,12 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Categories**: Plex recommendation hubs (trending, recently added, etc.)
 - **Collections**: User-created movie/TV collections
 
+### Channel Grouping
+- Enable via **Settings → Interface Settings → Group channels by type**
+- Channels are grouped into collapsible sections: Libraries, Video Playlists, Music Playlists, Categories, Collections
+- Click a section header to collapse/expand it; the EPG grid stays in sync
+- Channels within each section are sorted alphabetically
+
 ### EPG-Aware Playback Resume
 - Clicking a currently-airing media bar automatically seeks to the live broadcast position
 - Toggle via **Settings → Playback Settings → Resume from current broadcast position**
