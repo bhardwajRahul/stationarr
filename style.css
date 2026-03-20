@@ -736,8 +736,7 @@ body {
     accent-color: #e5a00d;
 }
 
-#volumeDisplay,
-#channelHeightDisplay {
+#volumeDisplay {
     color: #e5a00d;
     font-weight: 500;
     min-width: 35px;
@@ -1229,37 +1228,6 @@ body {
     opacity: 0.7;
 }
 
-/* Channel resize handle */
-.channel-resize-handle {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: transparent;
-    cursor: ns-resize;
-    opacity: 0;
-    transition: all 0.2s ease;
-    z-index: 10;
-}
-
-.channel-item:hover .channel-resize-handle {
-    opacity: 1;
-    background: #e5a00d;
-    box-shadow: 0 0 4px rgba(229, 160, 13, 0.5);
-}
-
-.channel-resize-handle:hover {
-    height: 6px;
-    background: #f5b50d !important;
-    box-shadow: 0 0 8px rgba(245, 181, 13, 0.7) !important;
-}
-
-.channel-resize-handle:active {
-    height: 8px;
-    background: #fff !important;
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.8) !important;
-}
 
 @media (max-width: 768px) {
     .sidebar {

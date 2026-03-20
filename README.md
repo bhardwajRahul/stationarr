@@ -12,7 +12,6 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Color-coded Program Bars**: Movies in green, TV shows in blue, currently playing highlighted in orange
 - **Live Search**: Filter channels and media boxes in real-time from the header search bar
 - **Channel Grouping**: Optional grouping of channels by type (Libraries, Video Playlists, Music Playlists, Categories, Collections) with collapsible sections, sorted alphabetically
-- **Interactive Channel Scaling**: Drag-to-resize channel heights or use settings slider (50%-200%)
 - **Responsive Design**: Works on desktop and mobile devices
 - **Enhanced Tooltips**: Detailed media information with poster artwork on hover
 - **Synchronized Scrolling**: Vertical and horizontal scrolling perfectly aligned
@@ -50,10 +49,6 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
    - Configure your Plex server in Settings (⚙️ button)
 
 ## Usage
-
-### Channel Resizing
-- **Settings Method**: Use the "Channel height scale" slider in Settings → Interface Settings
-- **Interactive Method**: Hover over any channel and drag the golden resize handle at the bottom
 
 ### EPG Time Scale
 - **Drag Handle**: Click and drag the "⟺ Scale" handle on the left of the time bar — drag right to zoom in (15-min slots, taller bars), drag left to zoom out (60-min slots, shorter bars)
@@ -93,7 +88,6 @@ Use the settings panel (⚙️ button) to configure:
 - **Display Options**: Time range (6, 12, or 24 hours)
 - **Interface Settings**:
   - Tooltips with configurable delay
-  - Channel height scaling (50%-200%)
   - EPG time scale (30%-300%)
   - Poster artwork display toggle
   - Animations and visual effects

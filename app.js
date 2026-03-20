@@ -68,7 +68,6 @@ class PlexStationarr {
                 showChannelLogos: true,
                 enableAnimations: true,
                 showPosters: true,
-                channelHeightScale: 1.0, // Scale factor for channel height (0.5 - 2.0)
                 epgScale: 1.0,           // Scale factor for EPG time zoom (0.3 - 3.0)
                 groupChannelsByType: false
             },
@@ -158,9 +157,6 @@ class PlexStationarr {
         this.renderChannels();
         this.renderEPG();
         this.updateCurrentTimeLine();
-        
-        // Apply channel height scale after rendering
-        setTimeout(() => this.applyChannelHeightScale(), 100);
         
         // Start auto-refresh if enabled
         this.showProgress('Finalizing setup...');
@@ -1114,16 +1110,13 @@ class PlexStationarr {
                     <div class="channel-name">${channel.name}</div>
                     <div class="channel-type">${channel.type}</div>
                 </div>
-                <div class="channel-resize-handle" title="Drag to resize channel height"></div>
             `;
-            el.addEventListener('click', (e) => {
-                if (e.target.classList.contains('channel-resize-handle')) return;
+            el.addEventListener('click', () => {
                 document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
                 el.classList.add('active');
                 this.selectedChannel = channel.id;
                 this.playChannelContent(channel);
             });
-            this.setupChannelResizeHandle(el.querySelector('.channel-resize-handle'));
             return el;
         };
 
@@ -1658,8 +1651,6 @@ class PlexStationarr {
         document.getElementById('compactView').checked = this.config.ui.compactView;
         document.getElementById('enableAnimations').checked = this.config.ui.enableAnimations;
         document.getElementById('showPosters').checked = this.config.ui.showPosters;
-        document.getElementById('channelHeightScale').value = this.config.ui.channelHeightScale;
-        document.getElementById('channelHeightDisplay').textContent = Math.round(this.config.ui.channelHeightScale * 100) + '%';
         document.getElementById('epgScaleSetting').value = this.config.ui.epgScale;
         document.getElementById('epgScaleDisplay').textContent = Math.round(this.config.ui.epgScale * 100) + '%';
         document.getElementById('groupChannelsByType').checked = this.config.ui.groupChannelsByType;
@@ -1686,15 +1677,6 @@ class PlexStationarr {
         const volumeDisplay = document.getElementById('volumeDisplay');
         volumeSlider.addEventListener('input', () => {
             volumeDisplay.textContent = volumeSlider.value + '%';
-        });
-
-        // Add channel height scale slider listener
-        const channelHeightSlider = document.getElementById('channelHeightScale');
-        const channelHeightDisplay = document.getElementById('channelHeightDisplay');
-        channelHeightSlider.addEventListener('input', () => {
-            const scale = parseFloat(channelHeightSlider.value);
-            channelHeightDisplay.textContent = Math.round(scale * 100) + '%';
-            this.applyChannelHeightScale(scale);
         });
 
         // Add EPG scale slider listener
@@ -1887,7 +1869,6 @@ class PlexStationarr {
         this.config.ui.compactView = document.getElementById('compactView').checked;
         this.config.ui.enableAnimations = document.getElementById('enableAnimations').checked;
         this.config.ui.showPosters = document.getElementById('showPosters').checked;
-        this.config.ui.channelHeightScale = parseFloat(document.getElementById('channelHeightScale').value);
         this.config.ui.epgScale = parseFloat(document.getElementById('epgScaleSetting').value);
         this.config.ui.groupChannelsByType = document.getElementById('groupChannelsByType').checked;
         this.config.ui.autoRefresh = document.getElementById('autoRefresh').checked;
@@ -1963,9 +1944,6 @@ class PlexStationarr {
             this.renderChannels();
             this.renderEPG();
             
-            // Apply channel height scale after rendering
-            setTimeout(() => this.applyChannelHeightScale(), 100);
-            
             this.closeConfigModal();
             
             // Show success notification
@@ -1984,45 +1962,6 @@ class PlexStationarr {
         this.setupAutoRefresh();
     }
 
-    applyChannelHeightScale(scale = null) {
-        const scaleValue = scale || this.config.ui.channelHeightScale;
-        const baseHeight = 80; // Base height in pixels
-        const scaledHeight = Math.round(baseHeight * scaleValue);
-        
-        // Apply to channel items
-        const channelItems = document.querySelectorAll('.channel-item');
-        channelItems.forEach(item => {
-            item.style.height = `${scaledHeight}px`;
-            item.style.minHeight = `${scaledHeight}px`;
-        });
-        
-        // Apply to channel rows
-        const channelRows = document.querySelectorAll('.channel-row');
-        channelRows.forEach(row => {
-            row.style.height = `${scaledHeight}px`;
-            row.style.minHeight = `${scaledHeight}px`;
-        });
-        
-        // Apply to programs
-        const programs = document.querySelectorAll('.program');
-        programs.forEach(program => {
-            program.style.height = `${scaledHeight}px`;
-            program.style.minHeight = `${scaledHeight}px`;
-        });
-        
-        // Adjust poster size to fit new scale while preserving aspect ratio
-        const posterHeight = Math.max(30, scaledHeight - 12); // Minimum 30px, subtract padding
-        const posterWidth = Math.round(posterHeight * 0.67); // Maintain ~2:3 aspect ratio (width:height)
-        
-        const posters = document.querySelectorAll('.program-poster-left');
-        posters.forEach(poster => {
-            poster.style.height = `${posterHeight}px`;
-            poster.style.width = `${posterWidth}px`;
-        });
-        
-        console.log(`Applied channel height scale: ${scaleValue} (${scaledHeight}px)`);
-    }
-
     applyEpgScale(scale) {
         this.epgScale = scale;
         this.config.ui.epgScale = scale;
@@ -2036,10 +1975,6 @@ class PlexStationarr {
             p.style.width = `${width}px`;
             p.style.minWidth = `${width}px`;
         });
-
-        // Scale bar height proportionally (clamped to existing 0.5–2.0 range)
-        const heightScale = Math.max(0.5, Math.min(2.0, scale));
-        this.applyChannelHeightScale(heightScale);
 
         // Re-render time labels with new interval/width
         const timelineHeader = document.getElementById('timelineHeader');
@@ -2086,70 +2021,6 @@ class PlexStationarr {
             document.body.style.cursor = '';
             this.saveSettings();
         });
-    }
-
-    setupChannelResizeHandle(handle) {
-        if (!handle) return;
-
-        let isDragging = false;
-        let startY = 0;
-        let startScale = this.config.ui.channelHeightScale;
-
-        const onMouseDown = (e) => {
-            isDragging = true;
-            startY = e.clientY;
-            startScale = this.config.ui.channelHeightScale;
-            
-            document.body.style.cursor = 'ns-resize';
-            document.body.style.userSelect = 'none';
-            
-            e.preventDefault();
-            e.stopPropagation();
-        };
-
-        const onMouseMove = (e) => {
-            if (!isDragging) return;
-
-            const deltaY = e.clientY - startY;
-            const sensitivity = 0.003; // Adjust sensitivity
-            const newScale = Math.max(0.5, Math.min(2.0, startScale + (deltaY * sensitivity)));
-            
-            // Update scale and apply immediately
-            this.config.ui.channelHeightScale = newScale;
-            this.applyChannelHeightScale(newScale);
-            
-            // Update settings UI if open
-            const scaleSlider = document.getElementById('channelHeightScale');
-            const scaleDisplay = document.getElementById('channelHeightDisplay');
-            if (scaleSlider) {
-                scaleSlider.value = newScale;
-                scaleDisplay.textContent = Math.round(newScale * 100) + '%';
-            }
-            
-            e.preventDefault();
-        };
-
-        const onMouseUp = () => {
-            if (!isDragging) return;
-            
-            isDragging = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            
-            // Save the new scale setting
-            this.saveSettings();
-        };
-
-        handle.addEventListener('mousedown', onMouseDown);
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        
-        // Store cleanup function for potential removal
-        handle._cleanup = () => {
-            handle.removeEventListener('mousedown', onMouseDown);
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
     }
 
     setupAutoRefresh() {
