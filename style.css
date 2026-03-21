@@ -1309,6 +1309,54 @@ kbd {
     .minimized-player { width: 260px; height: 168px; bottom: 10px; right: 10px; }
 }
 
+/* ── Context Menu ─────────────────────────────────────────── */
+.context-menu {
+    position: fixed;
+    background: var(--surface-2);
+    border: 1px solid var(--border-md);
+    border-radius: var(--r-sm);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    padding: 0.25rem 0;
+    z-index: 1000;
+    min-width: 150px;
+    backdrop-filter: blur(8px);
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-2);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.context-menu-item:hover {
+    background: var(--surface-3);
+    color: var(--text-1);
+}
+
+.context-menu-item:active {
+    background: var(--surface-4);
+}
+
+.context-menu-icon {
+    font-size: 0.8rem;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.context-menu-text {
+    flex: 1;
+    font-weight: 500;
+}
+
 /* ── Audio Player ─────────────────────────────────────────── */
 .audio-modal {
     display: none;

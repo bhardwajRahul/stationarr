@@ -298,6 +298,9 @@ class PlexStationarr {
         // Video player event listeners
         this.setupVideoPlayerListeners();
 
+        // Context menu event listeners
+        this.setupContextMenuListeners();
+
         // Audio player event listeners
         this.setupAudioPlayerListeners();
 
@@ -359,6 +362,37 @@ class PlexStationarr {
             if (e.key === 'ArrowLeft' && videoModal.classList.contains('show')) {
                 e.preventDefault();
                 this.playPrevious();
+            }
+        });
+    }
+
+    setupContextMenuListeners() {
+        const contextMenu = document.getElementById('channelContextMenu');
+        
+        // Handle context menu item clicks
+        contextMenu.addEventListener('click', (e) => {
+            const item = e.target.closest('.context-menu-item');
+            if (!item) return;
+            
+            const action = item.dataset.action;
+            const channelId = contextMenu.dataset.channelId;
+            const channelType = contextMenu.dataset.channelType;
+            
+            if (action === 'remove' && channelId && channelType) {
+                this.removeChannel(channelId, channelType);
+            }
+        });
+        
+        // Hide context menu when clicking outside or on escape
+        document.addEventListener('click', (e) => {
+            if (!contextMenu.contains(e.target)) {
+                contextMenu.style.display = 'none';
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                contextMenu.style.display = 'none';
             }
         });
     }
@@ -1158,6 +1192,13 @@ class PlexStationarr {
                 this.selectedChannel = channel.id;
                 this.playChannelContent(channel);
             });
+            
+            // Right-click context menu
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.showChannelContextMenu(e, channel);
+            });
+            
             return el;
         };
 
@@ -3447,6 +3488,81 @@ class PlexStationarr {
 
     updateMiniPlayButton(icon) {
         document.getElementById('miniPlayPause').textContent = icon;
+    }
+
+    showChannelContextMenu(event, channel) {
+        const menu = document.getElementById('channelContextMenu');
+        
+        // Position the menu
+        menu.style.display = 'block';
+        menu.style.left = event.pageX + 'px';
+        menu.style.top = event.pageY + 'px';
+        
+        // Store the current channel for later use
+        menu.dataset.channelId = channel.id;
+        menu.dataset.channelType = channel.type;
+        
+        // Adjust position if menu goes off-screen
+        const menuRect = menu.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        if (menuRect.right > viewportWidth) {
+            menu.style.left = (event.pageX - menuRect.width) + 'px';
+        }
+        if (menuRect.bottom > viewportHeight) {
+            menu.style.top = (event.pageY - menuRect.height) + 'px';
+        }
+        
+        // Close menu when clicking elsewhere
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.style.display = 'none';
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        // Use setTimeout to prevent immediate closure
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 10);
+    }
+    
+    removeChannel(channelId, channelType) {
+        console.log('Removing channel:', channelId, 'of type:', channelType);
+        
+        // Remove from the appropriate visible channels set based on type
+        if (channelType === 'library') {
+            this.config.selectedLibraries.delete(channelId);
+        } else if (channelType === 'video-playlist') {
+            this.config.selectedVideoPlaylists.delete(channelId);
+        } else if (channelType === 'music-playlist') {
+            this.config.selectedMusicPlaylists.delete(channelId);
+        } else if (channelType === 'category') {
+            this.config.selectedCategories.delete(channelId);
+        } else if (channelType === 'collection') {
+            this.config.selectedCollections.delete(channelId);
+        }
+        
+        // Remove from visible channels
+        this.config.visibleChannels.delete(channelId);
+        
+        // Save configuration
+        this.saveSettings();
+        
+        // Reload and re-render
+        this.loadSelectedChannels(false).then(() => {
+            this.renderChannels();
+            this.renderEPG();
+            
+            // Show notification
+            if (this.config.playback.showPlaybackNotifications) {
+                this.showNotification('Channel removed', 'success');
+            }
+        });
+        
+        // Hide context menu
+        document.getElementById('channelContextMenu').style.display = 'none';
     }
 
     formatDuration(duration) {
