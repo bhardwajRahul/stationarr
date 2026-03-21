@@ -63,8 +63,8 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Collections**: User-created movie/TV collections
 
 ### Channel Grouping
-- Enable via **Settings → Interface Settings → Group channels by type**
-- Channels are grouped into collapsible sections: Libraries, Video Playlists, Music Playlists, Categories, Collections
+- Enabled by default; toggle via **Settings → Interface Settings → Group channels by type**
+- Channels are grouped into collapsible bellows: Libraries, Video Playlists, Music Playlists, Categories, Collections
 - Click a section header to collapse/expand it; the EPG grid stays in sync
 - Channels within each section are sorted alphabetically
 - Collapsed state is remembered across page reloads
@@ -148,6 +148,7 @@ This is an active development project with ongoing improvements:
 - ✅ Fetch timeout: all Plex API requests abort after 30 seconds so a slow/unresponsive library cannot hang the entire load
 - ✅ Refresh guard: concurrent auto-refresh cycles are prevented; a new refresh is skipped if one is already in progress
 - ✅ Auto-refresh interval floor: enforced minimum of 60 seconds prevents a corrupt/zero localStorage value from triggering a continuous reload loop
+- ✅ Channel grouping enabled by default: collapsible bellows (Libraries, Playlists, Categories, Collections) are on out of the box; settings migration resets the old false default for existing sessions
 
 ## Contributing
 
