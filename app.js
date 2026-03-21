@@ -1586,8 +1586,9 @@ class PlexStationarr {
             return ka.localeCompare(kb);
         });
 
-        // Deterministic shuffle seeded by channel ID
-        const rng = this._seededRandom(this._hashString(String(channel.id)));
+        // Deterministic shuffle seeded by channel ID + randomization seed
+        const seedString = String(channel.id) + ':' + (channel.randomSeed || 0);
+        const rng = this._seededRandom(this._hashString(seedString));
         for (let i = content.length - 1; i > 0; i--) {
             const j = Math.floor(rng() * (i + 1));
             [content[i], content[j]] = [content[j], content[i]];
@@ -2459,22 +2460,17 @@ class PlexStationarr {
         // Show progress feedback
         this.showProgress('Randomizing channel content...');
         
-        // Fisher-Yates shuffle algorithm for each channel's content
+        // Add a randomization seed to each channel to break the deterministic shuffle
         this.channels.forEach(channel => {
             if (channel.content && channel.content.length > 1) {
-                const content = [...channel.content]; // Create copy to avoid modifying original
-                
-                // Shuffle the content array
-                for (let i = content.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [content[i], content[j]] = [content[j], content[i]];
-                }
-                
-                channel.content = content;
+                // Add or increment a randomization counter to change the channel's hash
+                // This will make the deterministic shuffle in _generateStableSchedule produce different results
+                channel.randomSeed = (channel.randomSeed || 0) + 1;
+                console.log(`Randomizing ${channel.name}, new seed: ${channel.randomSeed}`);
             }
         });
         
-        // Clear cached program schedules since content order has changed
+        // Clear cached program schedules since the randomization seed has changed
         this.programScheduleCache = {};
         
         // Re-render the EPG with new randomized content
