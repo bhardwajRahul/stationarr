@@ -41,6 +41,10 @@ class PlexStationarr {
             this.channelOrder = {};
         }
 
+        this.currentChannel = null;
+        this.currentProgramIndex = -1;
+        this.programScheduleCache = {}; // channelId → program[]
+
         this.init();
     }
 
@@ -266,6 +270,11 @@ class PlexStationarr {
 
         closePlayer.addEventListener('click', () => this.closeVideoPlayer());
         minimizePlayer.addEventListener('click', () => this.minimizeVideoPlayer());
+        document.getElementById('prevProgram').addEventListener('click', () => this.playPrevious());
+        document.getElementById('nextProgram').addEventListener('click', () => this.playNext());
+        document.getElementById('randomProgram').addEventListener('click', () => this.playRandom());
+        document.getElementById('miniPrev').addEventListener('click', () => this.playPrevious());
+        document.getElementById('miniNext').addEventListener('click', () => this.playNext());
 
         document.getElementById('theatreModeBtn').addEventListener('click', () => {
             const container = document.querySelector('.video-player-container');
@@ -296,6 +305,14 @@ class PlexStationarr {
             if (e.key === ' ' && this.videoPlayer) {
                 e.preventDefault();
                 this.togglePlayback();
+            }
+            if (e.key === 'ArrowRight' && videoModal.classList.contains('show')) {
+                e.preventDefault();
+                this.playNext();
+            }
+            if (e.key === 'ArrowLeft' && videoModal.classList.contains('show')) {
+                e.preventDefault();
+                this.playPrevious();
             }
         });
     }
@@ -613,6 +630,7 @@ class PlexStationarr {
 
     clearEpisodeCache() {
         this.episodeCache.clear();
+        this.programScheduleCache = {};
         console.log('Episode cache cleared');
     }
 
@@ -1512,6 +1530,9 @@ class PlexStationarr {
     }
 
     generateProgramSchedule(channel) {
+        if (this.programScheduleCache[channel.id]) {
+            return this.programScheduleCache[channel.id];
+        }
         const programs = [];
         const startTime = new Date(this.timeSlots[0]);
         const endTime = new Date(this.timeSlots[this.timeSlots.length - 1]);
@@ -1563,7 +1584,8 @@ class PlexStationarr {
             
             currentTime = programEndTime;
         }
-        
+
+        this.programScheduleCache[channel.id] = programs;
         return programs;
     }
 
@@ -2189,7 +2211,21 @@ class PlexStationarr {
         await this.playProgram(firstContent, channel);
     }
 
-    async playProgram(program, channel) {
+    async playProgram(program, channel, programIndex = -1) {
+        // Track current channel and position for prev/next/random
+        this.currentChannel = channel;
+        const schedule = this.generateProgramSchedule(channel);
+        if (programIndex >= 0) {
+            this.currentProgramIndex = programIndex;
+        } else {
+            // Find this program in the schedule by ratingKey + startTime
+            const idx = schedule.findIndex(p =>
+                p.ratingKey === program.ratingKey &&
+                p.startTime?.getTime() === program.startTime?.getTime()
+            );
+            this.currentProgramIndex = idx >= 0 ? idx : 0;
+        }
+
         try {
             this.showVideoPlayer();
             this.showVideoLoading(true);
@@ -2299,6 +2335,32 @@ class PlexStationarr {
             this.updateVideoInfo(displayItem, channel);
             this.loadVideo(demoUrl, displayItem, 0);
         }
+    }
+
+    playNext() {
+        if (!this.currentChannel) return;
+        const schedule = this.generateProgramSchedule(this.currentChannel);
+        if (!schedule.length) return;
+        const nextIndex = (this.currentProgramIndex + 1) % schedule.length;
+        this.playProgram(schedule[nextIndex], this.currentChannel, nextIndex);
+    }
+
+    playPrevious() {
+        if (!this.currentChannel) return;
+        const schedule = this.generateProgramSchedule(this.currentChannel);
+        if (!schedule.length) return;
+        const prevIndex = (this.currentProgramIndex - 1 + schedule.length) % schedule.length;
+        this.playProgram(schedule[prevIndex], this.currentChannel, prevIndex);
+    }
+
+    playRandom() {
+        if (!this.currentChannel) return;
+        const schedule = this.generateProgramSchedule(this.currentChannel);
+        if (schedule.length <= 1) return;
+        let randIndex;
+        do { randIndex = Math.floor(Math.random() * schedule.length); }
+        while (randIndex === this.currentProgramIndex);
+        this.playProgram(schedule[randIndex], this.currentChannel, randIndex);
     }
 
     async getStreamUrl(mediaItem, startOffset = 0) {
