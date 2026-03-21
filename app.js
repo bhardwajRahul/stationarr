@@ -3011,12 +3011,12 @@ class PlexStationarr {
             this.videoPlayer.addEventListener('play', () => {
                 console.log('Video playing');
                 if (!miniVideo.paused) miniVideo.pause();
-                this.updateMiniPlayButton('⏸️');
+                this.updateMiniPlayButton('⏸');
             });
             
             this.videoPlayer.addEventListener('pause', () => {
                 console.log('Video paused');
-                this.updateMiniPlayButton('▶️');
+                this.updateMiniPlayButton('▶');
                 
                 // Save position when pausing
                 if (this.currentMediaItem) {
@@ -3253,10 +3253,10 @@ class PlexStationarr {
         
         if (miniVideo.paused) {
             miniVideo.play();
-            this.updateMiniPlayButton('⏸️');
+            this.updateMiniPlayButton('⏸');
         } else {
             miniVideo.pause();
-            this.updateMiniPlayButton('▶️');
+            this.updateMiniPlayButton('▶');
         }
     }
 
