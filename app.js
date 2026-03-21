@@ -367,122 +367,88 @@ class PlexStationarr {
 
     async discoverAvailableContent() {
         console.log('=== DISCOVERING AVAILABLE CONTENT ===');
-        
+
         try {
             await this.testPlexConnection();
-            
-            // Discover libraries
-            const sections = await this.fetchPlexData('/library/sections');
-            this.availableLibraries = (sections.MediaContainer.Directory || [])
-                .filter(section => section.type === 'movie' || section.type === 'show')
-                .map(section => ({
-                    key: section.key,
-                    title: section.title,
-                    type: section.type,
-                    id: `library_${section.key}`
-                }));
-            
-            console.log('Available libraries:', this.availableLibraries);
 
-            // Discover playlists
-            try {
-                const playlists = await this.fetchPlexData('/playlists');
-                const allPlaylists = (playlists.MediaContainer.Metadata || []).map(playlist => ({
-                    ratingKey: playlist.ratingKey,
-                    title: playlist.title,
-                    id: `playlist_${playlist.ratingKey}`,
-                    playlistType: playlist.playlistType || 'unknown',
-                    type: playlist.type || 'unknown'
+            // Fetch libraries and playlists concurrently
+            const [sectionsResult, playlistsResult] = await Promise.allSettled([
+                this.fetchPlexData('/library/sections'),
+                this.fetchPlexData('/playlists')
+            ]);
+
+            // Process libraries
+            this.availableLibraries = sectionsResult.status === 'fulfilled'
+                ? (sectionsResult.value.MediaContainer.Directory || [])
+                    .filter(s => s.type === 'movie' || s.type === 'show')
+                    .map(s => ({ key: s.key, title: s.title, type: s.type, id: `library_${s.key}` }))
+                : [];
+            console.log('Available libraries:', this.availableLibraries.length);
+
+            // Process playlists
+            if (playlistsResult.status === 'fulfilled') {
+                const allPlaylists = (playlistsResult.value.MediaContainer.Metadata || []).map(p => ({
+                    ratingKey: p.ratingKey, title: p.title,
+                    id: `playlist_${p.ratingKey}`,
+                    playlistType: p.playlistType || 'unknown',
+                    type: p.type || 'unknown'
                 }));
-                
-                // Separate playlists by type
-                this.availableVideoPlaylists = allPlaylists.filter(playlist => 
-                    playlist.playlistType === 'video' || playlist.type === 'video' || 
-                    playlist.playlistType === 'photo' || playlist.type === 'photo'
-                ).map(playlist => ({
-                    ...playlist,
-                    id: `video_playlist_${playlist.ratingKey}`
-                }));
-                
-                this.availableMusicPlaylists = allPlaylists.filter(playlist => 
-                    playlist.playlistType === 'audio' || playlist.type === 'audio'
-                ).map(playlist => ({
-                    ...playlist,
-                    id: `music_playlist_${playlist.ratingKey}`
-                }));
-                
-                // Keep all playlists for backward compatibility
+                this.availableVideoPlaylists = allPlaylists
+                    .filter(p => p.playlistType === 'video' || p.type === 'video' || p.playlistType === 'photo' || p.type === 'photo')
+                    .map(p => ({ ...p, id: `video_playlist_${p.ratingKey}` }));
+                this.availableMusicPlaylists = allPlaylists
+                    .filter(p => p.playlistType === 'audio' || p.type === 'audio')
+                    .map(p => ({ ...p, id: `music_playlist_${p.ratingKey}` }));
                 this.availablePlaylists = allPlaylists;
-                
-                console.log('Available playlists:', allPlaylists.length);
-                console.log('Video playlists:', this.availableVideoPlaylists.length);
-                console.log('Music playlists:', this.availableMusicPlaylists.length);
-            } catch (error) {
-                console.warn('Could not discover playlists:', error);
+                console.log('Playlists:', allPlaylists.length, '(video:', this.availableVideoPlaylists.length, ', music:', this.availableMusicPlaylists.length, ')');
+            } else {
+                console.warn('Could not discover playlists:', playlistsResult.reason);
                 this.availablePlaylists = [];
                 this.availableVideoPlaylists = [];
                 this.availableMusicPlaylists = [];
             }
 
-            // Discover categories (genres from library sections)
-            try {
-                const genreMap = new Map(); // title -> array of fetch keys
-                for (const library of this.availableLibraries) {
-                    if (library.type !== 'movie' && library.type !== 'show') continue;
-                    try {
-                        const genreData = await this.fetchPlexData(`/library/sections/${library.key}/genre`);
-                        const genres = genreData.MediaContainer.Directory || [];
-                        genres.forEach(genre => {
-                            if (!genreMap.has(genre.title)) genreMap.set(genre.title, []);
-                            // Build a proper content path from the section + genre key
-                            const path = `/library/sections/${library.key}/all?genre=${encodeURIComponent(genre.key)}`;
-                            genreMap.get(genre.title).push(path);
-                        });
-                    } catch (e) { /* skip section */ }
-                }
-                this.availableCategories = [...genreMap.entries()]
-                    .sort((a, b) => a[0].localeCompare(b[0]))
-                    .map(([title, keys]) => ({
-                        title,
-                        keys, // array of per-section genre paths
-                        id: `genre_${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
-                    }));
-                console.log('Available categories (genres):', this.availableCategories.length);
-            } catch (error) {
-                console.warn('Could not discover categories:', error);
-                this.availableCategories = [];
-            }
+            // Fetch genres and collections from all libraries concurrently
+            const [genreResults, collectionResults] = await Promise.all([
+                Promise.allSettled(this.availableLibraries.map(lib =>
+                    this.fetchPlexData(`/library/sections/${lib.key}/genre`)
+                        .then(data => ({ lib, genres: data.MediaContainer.Directory || [] }))
+                )),
+                Promise.allSettled(this.availableLibraries.map(lib =>
+                    this.fetchPlexData(`/library/sections/${lib.key}/collections`)
+                        .then(data => ({ lib, collections: data.MediaContainer.Metadata || [] }))
+                ))
+            ]);
 
-            // Discover collections
-            try {
-                let allCollections = [];
-                
-                // Get collections from each library
-                for (const library of this.availableLibraries) {
-                    try {
-                        const collections = await this.fetchPlexData(`/library/sections/${library.key}/collections`);
-                        if (collections.MediaContainer.Metadata) {
-                            const libraryCollections = collections.MediaContainer.Metadata.map(collection => ({
-                                key: collection.ratingKey,
-                                title: collection.title,
-                                type: collection.type || 'collection',
-                                libraryKey: library.key,
-                                libraryTitle: library.title,
-                                id: `collection_${collection.ratingKey}`
-                            }));
-                            allCollections.push(...libraryCollections);
-                        }
-                    } catch (error) {
-                        console.warn(`Could not get collections from library ${library.title}:`, error);
-                    }
-                }
-                
-                this.availableCollections = allCollections;
-                console.log('Available collections:', this.availableCollections.length);
-            } catch (error) {
-                console.warn('Could not discover collections:', error);
-                this.availableCollections = [];
-            }
+            // Process genres into categories
+            const genreMap = new Map();
+            genreResults.forEach(result => {
+                if (result.status !== 'fulfilled') return;
+                const { lib, genres } = result.value;
+                genres.forEach(genre => {
+                    if (!genreMap.has(genre.title)) genreMap.set(genre.title, []);
+                    genreMap.get(genre.title).push(`/library/sections/${lib.key}/all?genre=${encodeURIComponent(genre.key)}`);
+                });
+            });
+            this.availableCategories = [...genreMap.entries()]
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([title, keys]) => ({ title, keys, id: `genre_${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}` }));
+            console.log('Available categories (genres):', this.availableCategories.length);
+
+            // Process collections
+            const allCollections = [];
+            collectionResults.forEach(result => {
+                if (result.status !== 'fulfilled') return;
+                const { lib, collections } = result.value;
+                collections.forEach(c => allCollections.push({
+                    key: c.ratingKey, title: c.title,
+                    type: c.type || 'collection',
+                    libraryKey: lib.key, libraryTitle: lib.title,
+                    id: `collection_${c.ratingKey}`
+                }));
+            });
+            this.availableCollections = allCollections;
+            console.log('Available collections:', this.availableCollections.length);
 
             // Auto-select all libraries on first run if nothing is selected
             if (this.config.selectedLibraries.size === 0 && this.availableLibraries.length > 0) {
@@ -647,185 +613,109 @@ class PlexStationarr {
 
     async loadSelectedChannels(showProgress = true) {
         console.log('=== LOADING SELECTED CHANNELS ===');
-        console.log('Content types enabled:', this.config.contentTypes);
-        console.log('Selected libraries:', this.config.selectedLibraries);
-        console.log('Selected video playlists:', this.config.selectedVideoPlaylists);
-        console.log('Selected music playlists:', this.config.selectedMusicPlaylists);
-        
-        const channels = [];
+
         let totalItems = 0;
-        let currentItem = 0;
+        if (this.config.contentTypes.libraries)    totalItems += this.availableLibraries.filter(l => this.config.selectedLibraries.has(l.id)).length;
+        if (this.config.contentTypes.videoPlaylists) totalItems += this.availableVideoPlaylists.filter(p => this.config.selectedVideoPlaylists.has(p.id)).length;
+        if (this.config.contentTypes.musicPlaylists) totalItems += this.availableMusicPlaylists.filter(p => this.config.selectedMusicPlaylists.has(p.id)).length;
+        if (this.config.contentTypes.categories)   totalItems += this.availableCategories.filter(c => this.config.selectedCategories.has(c.id)).length;
+        if (this.config.contentTypes.collections)  totalItems += this.availableCollections.filter(c => this.config.selectedCollections.has(c.id)).length;
 
-        // Count total items to process
-        if (this.config.contentTypes.libraries) {
-            totalItems += Array.from(this.config.selectedLibraries).length;
-        }
-        if (this.config.contentTypes.videoPlaylists) {
-            totalItems += Array.from(this.config.selectedVideoPlaylists).length;
-        }
-        if (this.config.contentTypes.musicPlaylists) {
-            totalItems += Array.from(this.config.selectedMusicPlaylists).length;
-        }
-        if (this.config.contentTypes.categories) {
-            totalItems += Array.from(this.config.selectedCategories).length;
-        }
-        if (this.config.contentTypes.collections) {
-            totalItems += Array.from(this.config.selectedCollections).length;
-        }
-
-        // If no content is selected, return empty channels
         if (totalItems === 0) {
             console.log('No content selected, returning empty channels');
             this.channels = [];
             return this.channels;
         }
 
+        let completed = 0;
+        const progress = (label) => { if (showProgress) this.showProgress(label, ++completed, totalItems); };
+
         try {
-            // Load selected libraries
-            if (this.config.contentTypes.libraries) {
-                for (const library of this.availableLibraries) {
-                    if (this.config.selectedLibraries.has(library.id)) {
-                        currentItem++;
-                        if (showProgress) {
-                            this.showProgress(`Loading library: ${library.title}`, currentItem, totalItems);
-                        }
-                        console.log(`Loading library: ${library.title}`);
-                        const sectionData = await this.fetchPlexData(`/library/sections/${library.key}/all`);
-                        
-                        if (sectionData.MediaContainer.Metadata) {
-                            // Show loading message for TV show expansion
-                            const tvShowCount = sectionData.MediaContainer.Metadata.filter(item => item.type === 'show').length;
-                            if (tvShowCount > 0) {
-                                if (showProgress) {
-                                    this.showProgress(`Processing ${tvShowCount} TV shows from ${library.title}...`, currentItem, totalItems);
-                                }
-                                console.log(`Processing ${tvShowCount} TV shows for episodes...`);
-                            }
-                            
-                            // Expand TV shows into individual episodes
-                            const expandedContent = await this.expandTVShowsToEpisodes(sectionData.MediaContainer.Metadata, library.title, showProgress);
-                            
-                            channels.push({
-                                id: library.id,
-                                name: library.title,
-                                type: 'library',
-                                logo: this.getChannelLogo(library.title),
-                                content: expandedContent.slice(0, 50) // Increased limit since we have episodes
-                            });
-                        }
-                    }
-                }
-            }
+            // All five content groups load concurrently; within each group all items load concurrently.
+            // Promise.all preserves insertion order so channel order stays stable.
+            const [libraryChannels, videoChannels, musicChannels, categoryChannels, collectionChannels] = await Promise.all([
 
-            // Load selected video playlists
-            if (this.config.contentTypes.videoPlaylists) {
-                for (const playlist of this.availableVideoPlaylists) {
-                    if (this.config.selectedVideoPlaylists.has(playlist.id)) {
-                        currentItem++;
-                        if (showProgress) {
-                            this.showProgress(`Loading video playlist: ${playlist.title}`, currentItem, totalItems);
-                        }
-                        console.log(`Loading video playlist: ${playlist.title}`);
-                        const playlistData = await this.fetchPlexData(`/playlists/${playlist.ratingKey}/items`);
-                        channels.push({
-                            id: playlist.id,
-                            name: `${playlist.title} (Video)`,
-                            type: 'video-playlist',
-                            logo: this.getChannelLogo(playlist.title),
-                            content: playlistData.MediaContainer.Metadata || []
-                        });
-                    }
-                }
-            }
+                // Libraries
+                this.config.contentTypes.libraries
+                    ? Promise.all(this.availableLibraries
+                        .filter(lib => this.config.selectedLibraries.has(lib.id))
+                        .map(async lib => {
+                            progress(`Loading ${lib.title}…`);
+                            try {
+                                const data = await this.fetchPlexData(`/library/sections/${lib.key}/all`);
+                                if (!data.MediaContainer.Metadata) return null;
+                                const content = await this.expandTVShowsToEpisodes(data.MediaContainer.Metadata, lib.title, false);
+                                return { id: lib.id, name: lib.title, type: 'library', logo: this.getChannelLogo(lib.title), content: content.slice(0, 50) };
+                            } catch (e) { console.warn(`Failed to load library ${lib.title}:`, e); return null; }
+                        }))
+                    : Promise.resolve([]),
 
-            // Load selected music playlists
-            if (this.config.contentTypes.musicPlaylists) {
-                for (const playlist of this.availableMusicPlaylists) {
-                    if (this.config.selectedMusicPlaylists.has(playlist.id)) {
-                        currentItem++;
-                        if (showProgress) {
-                            this.showProgress(`Loading music playlist: ${playlist.title}`, currentItem, totalItems);
-                        }
-                        console.log(`Loading music playlist: ${playlist.title}`);
-                        const playlistData = await this.fetchPlexData(`/playlists/${playlist.ratingKey}/items`);
-                        channels.push({
-                            id: playlist.id,
-                            name: `${playlist.title} (Music)`,
-                            type: 'music-playlist',
-                            logo: this.getChannelLogo(playlist.title),
-                            content: playlistData.MediaContainer.Metadata || []
-                        });
-                    }
-                }
-            }
+                // Video playlists
+                this.config.contentTypes.videoPlaylists
+                    ? Promise.all(this.availableVideoPlaylists
+                        .filter(pl => this.config.selectedVideoPlaylists.has(pl.id))
+                        .map(async pl => {
+                            progress(`Loading ${pl.title}…`);
+                            try {
+                                const data = await this.fetchPlexData(`/playlists/${pl.ratingKey}/items`);
+                                return { id: pl.id, name: `${pl.title} (Video)`, type: 'video-playlist', logo: this.getChannelLogo(pl.title), content: data.MediaContainer.Metadata || [] };
+                            } catch (e) { console.warn(`Failed to load playlist ${pl.title}:`, e); return null; }
+                        }))
+                    : Promise.resolve([]),
 
-            // Load selected categories
-            if (this.config.contentTypes.categories) {
-                for (const category of this.availableCategories) {
-                    if (this.config.selectedCategories.has(category.id)) {
-                        currentItem++;
-                        if (showProgress) {
-                            this.showProgress(`Loading category: ${category.title}`, currentItem, totalItems);
-                        }
-                        console.log(`Loading category: ${category.title}`);
-                        try {
-                            let content = [];
-                            for (const key of (category.keys || [category.key])) {
-                                try {
-                                    const data = await this.fetchPlexData(key);
-                                    content = content.concat(data.MediaContainer.Metadata || []);
-                                } catch (e) { /* skip section */ }
-                            }
-                            channels.push({
-                                id: category.id,
-                                name: category.title,
-                                type: 'category',
-                                logo: this.getChannelLogo(category.title),
-                                content: content.slice(0, 20) // Limit category items
-                            });
-                        } catch (error) {
-                            console.warn(`Failed to load category ${category.title}:`, error);
-                        }
-                    }
-                }
-            }
+                // Music playlists
+                this.config.contentTypes.musicPlaylists
+                    ? Promise.all(this.availableMusicPlaylists
+                        .filter(pl => this.config.selectedMusicPlaylists.has(pl.id))
+                        .map(async pl => {
+                            progress(`Loading ${pl.title}…`);
+                            try {
+                                const data = await this.fetchPlexData(`/playlists/${pl.ratingKey}/items`);
+                                return { id: pl.id, name: `${pl.title} (Music)`, type: 'music-playlist', logo: this.getChannelLogo(pl.title), content: data.MediaContainer.Metadata || [] };
+                            } catch (e) { console.warn(`Failed to load playlist ${pl.title}:`, e); return null; }
+                        }))
+                    : Promise.resolve([]),
 
-            // Load selected collections
-            if (this.config.contentTypes.collections) {
-                for (const collection of this.availableCollections) {
-                    if (this.config.selectedCollections.has(collection.id)) {
-                        currentItem++;
-                        if (showProgress) {
-                            this.showProgress(`Loading collection: ${collection.title}`, currentItem, totalItems);
-                        }
-                        console.log(`Loading collection: ${collection.title}`);
-                        try {
-                            const collectionData = await this.fetchPlexData(`/library/collections/${collection.key}/items`);
-                            let content = collectionData.MediaContainer.Metadata || [];
-                            
-                            // Expand TV shows in collections to episodes
-                            content = await this.expandTVShowsToEpisodes(content, `${collection.title} Collection`, showProgress);
-                            
-                            channels.push({
-                                id: collection.id,
-                                name: `${collection.title} (${collection.libraryTitle})`,
-                                type: 'collection',
-                                logo: this.getChannelLogo(collection.title),
-                                content: content.slice(0, 30) // Limit collection items
-                            });
-                        } catch (error) {
-                            console.warn(`Failed to load collection ${collection.title}:`, error);
-                        }
-                    }
-                }
-            }
+                // Categories — inner keys also fetched concurrently
+                this.config.contentTypes.categories
+                    ? Promise.all(this.availableCategories
+                        .filter(cat => this.config.selectedCategories.has(cat.id))
+                        .map(async cat => {
+                            progress(`Loading ${cat.title}…`);
+                            try {
+                                const keyResults = await Promise.allSettled(
+                                    (cat.keys || [cat.key]).map(k => this.fetchPlexData(k))
+                                );
+                                const content = keyResults
+                                    .filter(r => r.status === 'fulfilled')
+                                    .flatMap(r => r.value.MediaContainer.Metadata || []);
+                                return { id: cat.id, name: cat.title, type: 'category', logo: this.getChannelLogo(cat.title), content: content.slice(0, 20) };
+                            } catch (e) { console.warn(`Failed to load category ${cat.title}:`, e); return null; }
+                        }))
+                    : Promise.resolve([]),
 
-            console.log('=== CHANNELS LOADED ===');
-            console.log('Total channels loaded:', channels.length);
-            
+                // Collections
+                this.config.contentTypes.collections
+                    ? Promise.all(this.availableCollections
+                        .filter(col => this.config.selectedCollections.has(col.id))
+                        .map(async col => {
+                            progress(`Loading ${col.title}…`);
+                            try {
+                                const data = await this.fetchPlexData(`/library/collections/${col.key}/items`);
+                                const content = await this.expandTVShowsToEpisodes(data.MediaContainer.Metadata || [], `${col.title} Collection`, false);
+                                return { id: col.id, name: `${col.title} (${col.libraryTitle})`, type: 'collection', logo: this.getChannelLogo(col.title), content: content.slice(0, 30) };
+                            } catch (e) { console.warn(`Failed to load collection ${col.title}:`, e); return null; }
+                        }))
+                    : Promise.resolve([]),
+            ]);
+
+            const channels = [...libraryChannels, ...videoChannels, ...musicChannels, ...categoryChannels, ...collectionChannels]
+                .filter(Boolean);
+
+            console.log('=== CHANNELS LOADED ===', channels.length, 'channels');
             this.channels = channels;
             this.config.visibleChannels = new Set(channels.map(c => c.id));
-            
+
         } catch (error) {
             console.error('Error loading selected channels:', error);
             this.channels = [];
