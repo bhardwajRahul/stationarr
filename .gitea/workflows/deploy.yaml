@@ -22,3 +22,9 @@ jobs:
           docker rm plex-stationarr || true
           # Start the new one
           docker run -d --name plex-stationarr -p 8000:3000 plex-stationarr:latest
+
+  check-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Docker Socket
+        run: docker info
