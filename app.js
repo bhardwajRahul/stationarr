@@ -241,10 +241,10 @@ class PlexStationarr {
 
         // Help modal
         const helpModal = document.getElementById('helpModal');
-        document.getElementById('helpBtn').addEventListener('click', () => helpModal.classList.add('active'));
-        document.getElementById('closeHelpModal').addEventListener('click', () => helpModal.classList.remove('active'));
-        document.getElementById('closeHelpBtn').addEventListener('click', () => helpModal.classList.remove('active'));
-        helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.remove('active'); });
+        document.getElementById('helpBtn').addEventListener('click', () => helpModal.classList.add('show'));
+        document.getElementById('closeHelpModal').addEventListener('click', () => helpModal.classList.remove('show'));
+        document.getElementById('closeHelpBtn').addEventListener('click', () => helpModal.classList.remove('show'));
+        helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.remove('show'); });
 
         configBtn.addEventListener('click', () => this.openConfigModal());
         closeModal.addEventListener('click', () => this.closeConfigModal());
