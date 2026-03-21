@@ -429,6 +429,25 @@ kbd {
 .channel-item.drag-over-top    { box-shadow: inset 0  2px 0 var(--accent); }
 .channel-item.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--accent); }
 
+/* Group drag handle styling */
+.group-drag-handle {
+    color: var(--text-3);
+    font-size: 0.9rem;
+    line-height: 1;
+    padding-right: 0.5rem;
+    cursor: grab;
+    flex-shrink: 0;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.channel-group-header:hover .group-drag-handle { opacity: 1; }
+.group-drag-handle:active { cursor: grabbing; }
+
+.channel-group-header.dragging { opacity: 0.5; }
+.channel-group-header.drag-over-top    { box-shadow: inset 0  3px 0 var(--accent); }
+.channel-group-header.drag-over-bottom { box-shadow: inset 0 -3px 0 var(--accent); }
+
 .channel-item.active {
     background: var(--surface-2);
     border-left-color: var(--accent);

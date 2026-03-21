@@ -41,6 +41,13 @@ class PlexStationarr {
             this.channelOrder = {};
         }
 
+        try {
+            const saved = localStorage.getItem('plexStationarrGroupOrder');
+            this.groupOrder = saved ? JSON.parse(saved) : ['library', 'video-playlist', 'music-playlist', 'category', 'collection'];
+        } catch {
+            this.groupOrder = ['library', 'video-playlist', 'music-playlist', 'category', 'collection'];
+        }
+
         this.currentChannel = null;
         this.currentProgramIndex = -1;
         this.programScheduleCache = {}; // channelId → program[]
@@ -1075,7 +1082,6 @@ class PlexStationarr {
     }
 
     getGroupedChannels(channels) {
-        const TYPE_ORDER = ['library', 'video-playlist', 'music-playlist', 'category', 'collection'];
         const grouped = {};
         channels.forEach(ch => {
             if (!grouped[ch.type]) grouped[ch.type] = [];
@@ -1097,8 +1103,10 @@ class PlexStationarr {
                 grouped[type].sort((a, b) => a.name.localeCompare(b.name));
             }
         });
+        // Sort groups using the custom group order
         const types = Object.keys(grouped).sort((a, b) => {
-            const ai = TYPE_ORDER.indexOf(a), bi = TYPE_ORDER.indexOf(b);
+            const ai = this.groupOrder.indexOf(a);
+            const bi = this.groupOrder.indexOf(b);
             if (ai !== -1 && bi !== -1) return ai - bi;
             if (ai !== -1) return -1;
             if (bi !== -1) return 1;
@@ -1157,14 +1165,92 @@ class PlexStationarr {
             const { grouped, types } = this.getGroupedChannels(visibleChannels);
             let isFirst = true;
             let dragSrc = null;
+            let groupDragSrc = null;
 
             types.forEach(type => {
                 const header = document.createElement('div');
                 header.className = 'channel-group-header';
                 if (this.collapsedGroups.has(type)) header.classList.add('collapsed');
                 header.dataset.group = type;
-                header.innerHTML = `<span class="group-toggle">▾</span><span class="group-label">${this.getTypeLabel(type)}</span>`;
-                header.addEventListener('click', () => this.toggleChannelGroup(type));
+                header.draggable = true;
+                header.innerHTML = `<span class="group-drag-handle" title="Drag to reorder groups">⠿</span><span class="group-toggle">▾</span><span class="group-label">${this.getTypeLabel(type)}</span>`;
+                
+                // Toggle functionality (only on toggle span, not on drag handle)
+                header.querySelector('.group-toggle').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleChannelGroup(type);
+                });
+                header.querySelector('.group-label').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleChannelGroup(type);
+                });
+                
+                // Group drag-and-drop functionality
+                header.addEventListener('dragstart', (e) => {
+                    groupDragSrc = header;
+                    header.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', type);
+                });
+                header.addEventListener('dragend', () => {
+                    header.classList.remove('dragging');
+                    document.querySelectorAll('.channel-group-header')
+                        .forEach(h => h.classList.remove('drag-over-top', 'drag-over-bottom'));
+                    groupDragSrc = null;
+                });
+                header.addEventListener('dragover', (e) => {
+                    if (!groupDragSrc || groupDragSrc === header) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    const rect = header.getBoundingClientRect();
+                    const mid = rect.top + rect.height / 2;
+                    header.classList.remove('drag-over-top', 'drag-over-bottom');
+                    header.classList.add(e.clientY < mid ? 'drag-over-top' : 'drag-over-bottom');
+                });
+                header.addEventListener('dragleave', () => {
+                    header.classList.remove('drag-over-top', 'drag-over-bottom');
+                });
+                header.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (!groupDragSrc || groupDragSrc === header) return;
+                    const rect = header.getBoundingClientRect();
+                    const mid = rect.top + rect.height / 2;
+                    
+                    // Find all content for the dragged group
+                    const draggedType = groupDragSrc.dataset.group;
+                    const draggedItems = document.querySelectorAll(`.channel-item[data-group="${draggedType}"]`);
+                    
+                    if (e.clientY < mid) {
+                        // Insert before this header
+                        header.parentNode.insertBefore(groupDragSrc, header);
+                        draggedItems.forEach(item => {
+                            header.parentNode.insertBefore(item, header);
+                        });
+                    } else {
+                        // Insert after this header and its items
+                        const nextGroup = header.nextElementSibling;
+                        let insertAfter = header;
+                        while (insertAfter.nextElementSibling && !insertAfter.nextElementSibling.classList.contains('channel-group-header')) {
+                            insertAfter = insertAfter.nextElementSibling;
+                        }
+                        
+                        if (insertAfter.nextElementSibling) {
+                            insertAfter.parentNode.insertBefore(groupDragSrc, insertAfter.nextElementSibling);
+                            draggedItems.forEach(item => {
+                                insertAfter.parentNode.insertBefore(item, insertAfter.nextElementSibling);
+                            });
+                        } else {
+                            insertAfter.parentNode.appendChild(groupDragSrc);
+                            draggedItems.forEach(item => {
+                                insertAfter.parentNode.appendChild(item);
+                            });
+                        }
+                    }
+                    
+                    header.classList.remove('drag-over-top', 'drag-over-bottom');
+                    this.saveGroupOrder();
+                });
+                
                 channelsList.appendChild(header);
 
                 grouped[type].forEach(channel => {
@@ -1409,6 +1495,15 @@ class PlexStationarr {
         const items = document.querySelectorAll(`.channel-item[data-group="${type}"]`);
         this.channelOrder[type] = [...items].map(el => el.dataset.channelId);
         localStorage.setItem('plexStationarrChannelOrder', JSON.stringify(this.channelOrder));
+        this.reorderChannels();
+        this.renderEPG();
+    }
+
+    saveGroupOrder() {
+        const headers = document.querySelectorAll('.channel-group-header');
+        this.groupOrder = [...headers].map(header => header.dataset.group);
+        localStorage.setItem('plexStationarrGroupOrder', JSON.stringify(this.groupOrder));
+        console.log('Saved group order:', this.groupOrder);
         this.reorderChannels();
         this.renderEPG();
     }
