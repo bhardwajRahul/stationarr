@@ -1622,6 +1622,26 @@ class PlexStationarr {
             idx = (idx + 1) % content.length;
         }
 
+        // The EPG renderer lays programs out as a plain flex row starting at epgStart (pixel 0).
+        // If the first program began before epgStart, clip it so its startTime = epgStart and
+        // its duration reflects only the portion visible in the window — otherwise every program
+        // is shifted right by the pre-window overhang and the current-time indicator appears to
+        // be inside the wrong (next) program bar.
+        if (programs.length > 0) {
+            const first = programs[0];
+            const overlapMs = epgStart.getTime() - first.startTime.getTime();
+            if (overlapMs > 0) {
+                const remainingMs = first.duration * 60000 - overlapMs;
+                if (remainingMs > 0) {
+                    first.startTime = new Date(epgStart);
+                    first.duration = Math.round(remainingMs / 60000);
+                    first.endTime = new Date(epgStart.getTime() + remainingMs);
+                } else {
+                    programs.shift(); // Program ended before the window; drop it
+                }
+            }
+        }
+
         this.programScheduleCache[channel.id] = programs;
         return programs;
     }
