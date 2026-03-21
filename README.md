@@ -9,6 +9,7 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Video Playback**: Stream media directly in the browser with position memory and EPG-aware resume
 - **Music Playback**: Plexamp-style audio player for music playlists with album artwork, blurred backdrop, seek bar, volume control, and mini-player
 - **Global Shuffle**: ⇄ Shuffle button in the header instantly plays a random item from any visible channel; each subsequent track also plays randomly until turned off
+- **Content Randomization**: ⇌ Randomize button re-shuffles the order of media content within all channels, creating a fresh EPG schedule while maintaining stable broadcast timing
 - **Player Navigation**: Previous ⏮, Next ⏭, and Random ⇄ buttons skip through the channel schedule; also available in the mini-player and via ← / → arrow keys
 - **Stable Broadcast Schedule**: deterministic, epoch-anchored schedule so the same content is always airing at the same time on every reload — just like a real TV channel
 - **Comprehensive Content Types**: Libraries, video playlists, music playlists, categories, and collections
@@ -106,6 +107,12 @@ Open `http://localhost:3000` in your browser. Your Plex server will be pre-confi
 - Posters appear on the left side of program bars
 - Enhanced tooltips show larger poster images with detailed info
 
+### Header Controls
+- **⇄ Shuffle**: Plays random content from any channel; continues randomly until turned off
+- **⇌ Randomize**: Re-shuffles the order of content within channels for a fresh EPG schedule
+- **⚙ Settings**: Opens configuration panel for all app settings
+- **? Help**: Shows documentation and usage instructions
+
 ## Configuration
 
 Use the settings panel (⚙️ button) to configure. The panel is organised into collapsible sections:
@@ -193,6 +200,7 @@ This is an active development project with ongoing improvements:
 - ✅ Music playlist audio playback: Plexamp-style modal player with blurred album-art backdrop, centred artwork, track/artist/album info, seek bar with elapsed/total time, ⏮/▶⏸/⏭/⇄ controls, volume slider; minimises to a persistent mini-player; keyboard shortcuts (Space, ←, →, Esc) work when audio player is active
 - ✅ Stable broadcast schedule: content order seeded by channel ID and anchored to a fixed epoch so the same title is always airing at the same time regardless of page reload; toggle in Settings → Playback
 - ✅ Global shuffle: ⇄ Shuffle button in the header picks a random item from any visible channel and continues randomly after each track ends; highlighted in accent colour when active
+- ✅ Content randomization: ⇌ Randomize button re-shuffles media order within channels using deterministic seeding; each click produces different EPG schedule while maintaining stable broadcast timing
 - ✅ Concurrent loading: all Plex API fetches (libraries, playlists, genres, collections, TV show expansion) run in parallel — load time is now bounded by the slowest single request rather than the sum of all
 - ✅ Loading progress: detailed status throughout every phase (connecting, fetching, expanding TV shows per-title, completing) so the progress bar never appears stuck
 - ✅ config.json: Plex URL and token loaded from a gitignored server-side config file — no credentials in source code
