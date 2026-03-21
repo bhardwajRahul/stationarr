@@ -143,12 +143,10 @@ This is an active development project with ongoing improvements:
 - ✅ Channel grouping by type with collapsible sections (alphabetically sorted, state persisted)
 - ✅ Show-type items auto-resolve to first episode for playback
 - ✅ Settings panel redesigned with collapsible accordion sections and All/None/Invert list buttons
-- ✅ HLS EPG resume: offset embedded in transcode URL so Plex starts segments at the right position
 - ✅ Modern UI redesign: Plex-inspired dark theme with CSS design tokens, Inter font, refined typography and spacing
 - ✅ Program bar styling: uniform dark background for all bars; active/currently-airing bars highlighted with warm yellow accent border and background
-- ✅ HLS playback resume: uses hls.js startPosition so native controls show the correct elapsed time instead of 0:00
-- ✅ Plex session management: stable session IDs and correct cleanup prevent stale transcode conflicts on resume
-- ✅ Playback retry: regenerates a fresh Plex stream URL on error instead of falling back to a test video
+- ✅ Plex session management: unique timestamped session IDs per request and correct cleanup prevent orphaned transcode sessions
+- ✅ Playback retry: on seek-related failure (e.g. poor MKV seek index), retries from the beginning with a notification rather than showing an error
 - ✅ Browser fullscreen: black backdrop (no grey background)
 - ✅ Fetch timeout: all Plex API requests abort after 30 seconds so a slow/unresponsive library cannot hang the entire load
 - ✅ Refresh guard: concurrent auto-refresh cycles are prevented; a new refresh is skipped if one is already in progress

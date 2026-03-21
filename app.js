@@ -2386,7 +2386,7 @@ class PlexStationarr {
                 }
             }
 
-            // Pass startOffset so HLS transcode URL embeds it as offset param
+            // startOffset is used after stream loads (hls.js startPosition / canplay seek)
             streamUrl = await this.getStreamUrl(mediaItem, startOffset);
 
             console.log('Generated stream URL:', streamUrl);
@@ -2721,10 +2721,12 @@ class PlexStationarr {
             }
 
             // Method 3: HLS transcode via Plex universal endpoint.
-            // Pass `offset` (ms) so Plex starts the transcode at the right position —
-            // without it Plex always starts at t=0 and seeking via hls.js startPosition
-            // fails because the required segments haven't been transcoded yet.
-            const sessionId = `webapp-${mediaItem.ratingKey || 'unknown'}`;
+            // Seeking to startOffset is handled after load via hls.js startPosition
+            // and the canplay currentTime seek — the Plex `offset` parameter is not
+            // used because it causes manifest errors on many Plex versions.
+            // Unique session per request prevents stale-session conflicts on retry
+            const sessionId = `webapp-${mediaItem.ratingKey || 'unknown'}-${Date.now()}`;
+            this.currentPlexSessionId = sessionId;
             const transcodeParams = new URLSearchParams({
                 path: `/library/metadata/${ratingKey}`,
                 mediaIndex: '0',
@@ -2745,11 +2747,8 @@ class PlexStationarr {
                 'X-Plex-Device-Name': 'Plex Stationarr',
                 'X-Plex-Version': '1.0.0',
             });
-            if (startOffset > 0) {
-                transcodeParams.set('offset', String(Math.round(startOffset * 1000)));
-            }
             const transcodeUrl = `${this.config.plexUrl}/video/:/transcode/universal/start.m3u8?${transcodeParams}`;
-            console.log(`Using transcode URL (offset=${startOffset}s)`);
+            console.log(`Using transcode URL`);
             return transcodeUrl;
             
         } catch (error) {
@@ -2855,13 +2854,11 @@ class PlexStationarr {
                 this.hlsInstance = null;
             }
             // Send a stop command to any active transcode sessions
-            if (this.currentMediaItem && this.currentMediaItem.ratingKey) {
-                const sessionId = `webapp-${this.currentMediaItem.ratingKey}`;
-                const stopUrl = `${this.config.plexUrl}/video/:/transcode/universal/stop?session=${sessionId}&X-Plex-Token=${this.config.plexToken}`;
-                fetch(stopUrl, { method: 'GET' }).catch(() => {
-                    // Ignore errors - this is cleanup
-                });
-                console.log('Cleaned up Plex session for:', this.currentMediaItem.ratingKey);
+            if (this.currentPlexSessionId) {
+                const stopUrl = `${this.config.plexUrl}/video/:/transcode/universal/stop?session=${this.currentPlexSessionId}&X-Plex-Token=${this.config.plexToken}`;
+                fetch(stopUrl, { method: 'GET' }).catch(() => {});
+                console.log('Cleaned up Plex session:', this.currentPlexSessionId);
+                this.currentPlexSessionId = null;
             }
         } catch (error) {
             // Ignore cleanup errors
@@ -2946,7 +2943,10 @@ class PlexStationarr {
                 if (!this.positionRestored) {
                     this.positionRestored = true;
 
-                    // Determine seek target: EPG offset > saved position > none
+                    // Determine seek target: EPG offset > saved position > none.
+                    // Setting currentTime after canplay causes hls.js to request
+                    // segments at that position; Plex restarts its transcode from
+                    // the nearest keyframe and serves segments from there.
                     let seekTo = -1;
                     let seekMsg = null;
                     if (startOffset > 0) {
@@ -2989,15 +2989,21 @@ class PlexStationarr {
                 
                 if (retryCount < maxRetries) {
                     retryCount++;
-                    console.log(`Retrying video load (attempt ${retryCount}/${maxRetries})`);
+                    console.log(`Retrying video load from beginning (attempt ${retryCount}/${maxRetries})`);
                     this.cleanupPlexSessions();
+                    // Reset so the retry's canplay handler will auto-play
+                    this.positionRestored = false;
+                    if (startOffset > 0 && this.config.playback.showPlaybackNotifications) {
+                        this.showNotification('Couldn\'t jump to broadcast position — starting from beginning', 'info');
+                    }
                     setTimeout(async () => {
                         try {
-                            const newUrl = await this.getStreamUrl(mediaItem, startOffset);
+                            // Retry from start (startOffset=0) — seeking into the transcode failed
+                            const newUrl = await this.getStreamUrl(mediaItem, 0);
                             console.log('Retrying with new stream URL:', newUrl);
                             if (newUrl.endsWith('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
                                 if (this.hlsInstance) this.hlsInstance.destroy();
-                                this.hlsInstance = new Hls({ startPosition: startOffset > 0 ? startOffset : -1 });
+                                this.hlsInstance = new Hls();
                                 this.hlsInstance.loadSource(newUrl);
                                 this.hlsInstance.attachMedia(this.videoPlayer);
                             } else {
@@ -3070,9 +3076,9 @@ class PlexStationarr {
                 if (this.hlsInstance) {
                     this.hlsInstance.destroy();
                 }
-                // startPosition tells hls.js which second to begin loading from;
-                // the native controls will then show the correct time instead of 0:00
-                this.hlsInstance = new Hls({ startPosition: startOffset > 0 ? startOffset : -1 });
+                // Plex's offset param starts the transcode at the right position;
+                // hls.js plays from segment 0 of the manifest (= the offset position).
+                this.hlsInstance = new Hls();
                 this.hlsInstance.loadSource(streamUrl);
                 this.hlsInstance.attachMedia(this.videoPlayer);
                 this.hlsInstance.on(Hls.Events.ERROR, (event, data) => {
@@ -3081,7 +3087,7 @@ class PlexStationarr {
                     }
                 });
             } else if (this.videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                // Safari: native HLS — Plex offset param handles start position
+                // Safari: native HLS
                 this.videoPlayer.src = streamUrl;
                 this.videoPlayer.load();
             } else {
