@@ -1650,9 +1650,16 @@ class PlexStationarr {
             return programs;
         }
 
+        // Sort by stable key first so the shuffle input is identical regardless
+        // of the order Plex returned the data on this particular load
+        const content = [...channel.content].sort((a, b) => {
+            const ka = String(a.ratingKey || a.key || a.title || '');
+            const kb = String(b.ratingKey || b.key || b.title || '');
+            return ka.localeCompare(kb);
+        });
+
         // Deterministic shuffle seeded by channel ID
         const rng = this._seededRandom(this._hashString(String(channel.id)));
-        const content = [...channel.content];
         for (let i = content.length - 1; i > 0; i--) {
             const j = Math.floor(rng() * (i + 1));
             [content[i], content[j]] = [content[j], content[i]];
@@ -1665,7 +1672,8 @@ class PlexStationarr {
 
         // Anchor to a fixed epoch (Jan 1 2024 UTC) so schedule is absolute
         const EPOCH = Date.UTC(2024, 0, 1);
-        const elapsedMs = Date.now() - EPOCH;
+        const nowMs = Date.now(); // single snapshot — used consistently throughout
+        const elapsedMs = nowMs - EPOCH;
         const posInCycleMs = ((elapsedMs % totalCycleMs) + totalCycleMs) % totalCycleMs;
 
         // Find which item is "on air" right now and how far into it we are
@@ -1683,7 +1691,7 @@ class PlexStationarr {
         }
 
         // Actual ms timestamp when the current item started
-        const nowItemStartMs = Date.now() - offsetIntoNowItem;
+        const nowItemStartMs = nowMs - offsetIntoNowItem;
 
         // Walk backwards from the current item until we cover epgStart
         let scheduleStartMs = nowItemStartMs;
