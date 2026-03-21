@@ -3531,6 +3531,37 @@ class PlexStationarr {
     removeChannel(channelId, channelType) {
         console.log('Removing channel:', channelId, 'of type:', channelType);
         
+        // Hide context menu immediately
+        document.getElementById('channelContextMenu').style.display = 'none';
+        
+        // Show notification immediately
+        if (this.config.playback.showPlaybackNotifications) {
+            this.showNotification('Channel removed', 'success');
+        }
+        
+        // Remove channel from UI immediately
+        const channelElement = document.querySelector(`.channel-item[data-channel-id="${channelId}"]`);
+        const epgChannelRow = document.querySelector(`.channel-row[data-channel-id="${channelId}"]`);
+        
+        if (channelElement) {
+            // Add removal animation
+            channelElement.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            channelElement.style.opacity = '0';
+            channelElement.style.transform = 'translateX(-20px)';
+            setTimeout(() => channelElement.remove(), 200);
+        }
+        
+        if (epgChannelRow) {
+            // Add removal animation for EPG row
+            epgChannelRow.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            epgChannelRow.style.opacity = '0';
+            epgChannelRow.style.transform = 'translateX(-20px)';
+            setTimeout(() => epgChannelRow.remove(), 200);
+        }
+        
+        // Update configuration in background (no need to wait)
+        this.config.visibleChannels.delete(channelId);
+        
         // Remove from the appropriate visible channels set based on type
         if (channelType === 'library') {
             this.config.selectedLibraries.delete(channelId);
@@ -3544,25 +3575,13 @@ class PlexStationarr {
             this.config.selectedCollections.delete(channelId);
         }
         
-        // Remove from visible channels
-        this.config.visibleChannels.delete(channelId);
+        // Update internal channels array
+        this.channels = this.channels.filter(channel => channel.id !== channelId);
         
-        // Save configuration
+        // Save configuration in background
         this.saveSettings();
         
-        // Reload and re-render
-        this.loadSelectedChannels(false).then(() => {
-            this.renderChannels();
-            this.renderEPG();
-            
-            // Show notification
-            if (this.config.playback.showPlaybackNotifications) {
-                this.showNotification('Channel removed', 'success');
-            }
-        });
-        
-        // Hide context menu
-        document.getElementById('channelContextMenu').style.display = 'none';
+        console.log('Channel removed instantly from UI');
     }
 
     formatDuration(duration) {
