@@ -11,7 +11,7 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Player Navigation**: Previous ⏮, Next ⏭, and Random ⇄ buttons skip through the channel schedule; also available in the mini-player and via ← / → arrow keys
 - **Comprehensive Content Types**: Libraries, video playlists, music playlists, categories, and collections
 - **Media Artwork**: Plex poster integration in program bars and tooltips
-- **Color-coded Program Bars**: Movies in green, TV shows in blue, currently playing highlighted in orange
+- **Color-coded Program Bars**: Movies in green, TV shows in blue, currently playing highlighted in yellow
 - **Live Search**: Filter channels and media boxes in real-time from the header search bar
 - **Channel Grouping**: Optional grouping of channels by type (Libraries, Video Playlists, Music Playlists, Categories, Collections) with collapsible sections, sorted alphabetically
 - **Responsive Design**: Works on desktop and mobile devices
@@ -87,7 +87,7 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 Use the settings panel (⚙️ button) to configure. The panel is organised into collapsible sections:
 
 - **Server**: Plex URL, authentication token, and connection test
-- **Content**: Hours to display; Libraries, Video Playlists, Music Playlists, Categories, and Collections — each list sorted alphabetically with All / None selection buttons
+- **Content**: Hours to display; Libraries, Video Playlists, Music Playlists, Categories, and Collections — each list sorted alphabetically with All / None / Invert selection buttons
 - **Display**: EPG time scale, channel grouping, posters, logos, animations, tooltips
 - **Playback**: Broadcast-position resume, position memory, auto-play, notifications, volume
 - **Auto-Refresh**: Toggle and interval (30 min, 1 hour, 4 hours default, 8 hours)
@@ -140,7 +140,7 @@ This is an active development project with ongoing improvements:
 - ✅ Current time indicator aligned to time bar
 - ✅ Channel grouping by type with collapsible sections (alphabetically sorted, state persisted)
 - ✅ Show-type items auto-resolve to first episode for playback
-- ✅ Settings panel redesigned with collapsible accordion sections and All/None list buttons
+- ✅ Settings panel redesigned with collapsible accordion sections and All/None/Invert list buttons
 - ✅ HLS EPG resume: offset embedded in transcode URL so Plex starts segments at the right position
 - ✅ Modern UI redesign: Plex-inspired dark theme with CSS design tokens, Inter font, refined typography and spacing
 - ✅ Program bar styling: uniform dark background for all bars; active/currently-airing bars highlighted with warm yellow accent border and background
