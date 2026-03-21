@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  plex-stationarr:
+  stationarr:
     build: .
-    container_name: plex-stationarr
+    container_name: stationarr
     ports:
       - "3000:3000"
     environment:
@@ -13,7 +13,7 @@ services:
     networks:
       - plex-network
     labels:
-      - "com.docker.compose.project=plex-stationarr"
+      - "com.docker.compose.project=stationarr"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
@@ -29,9 +29,9 @@ networks:
 # Uncomment and modify as needed
 #
 # services:
-#   plex-stationarr:
+#   stationarr:
 #     build: .
-#     container_name: plex-stationarr
+#     container_name: stationarr
 #     ports:
 #       - "8080:3000"  # Custom external port
 #     environment:
