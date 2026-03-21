@@ -69,7 +69,7 @@ class PlexStationarr {
                 enableAnimations: true,
                 showPosters: true,
                 epgScale: 1.0,           // Scale factor for EPG time zoom (0.3 - 3.0)
-                groupChannelsByType: false
+                groupChannelsByType: true
             },
             playback: {
                 autoPlay: false,
@@ -105,7 +105,16 @@ class PlexStationarr {
                 if (parsed.playback) merged.playback = { ...defaultSettings.playback, ...parsed.playback };
                 if (parsed.advanced) merged.advanced = { ...defaultSettings.advanced, ...parsed.advanced };
                 if (parsed.contentTypes) merged.contentTypes = { ...defaultSettings.contentTypes, ...parsed.contentTypes };
-                
+
+                // Migration: if saved settings pre-date groupChannelsByType defaulting to true,
+                // the stored false was the old default — reset it so channels are grouped by default.
+                if (!parsed.settingsVersion || parsed.settingsVersion < 2) {
+                    if (merged.ui.groupChannelsByType === false) {
+                        merged.ui.groupChannelsByType = true;
+                    }
+                    merged.settingsVersion = 2;
+                }
+
                 return merged;
             }
         } catch (error) {
@@ -119,6 +128,7 @@ class PlexStationarr {
         try {
             const settingsToSave = {
                 ...this.config,
+                settingsVersion: 2,
                 // Convert Sets to arrays for JSON serialization
                 selectedLibraries: Array.from(this.config.selectedLibraries),
                 selectedPlaylists: Array.from(this.config.selectedPlaylists),
