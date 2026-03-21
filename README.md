@@ -11,7 +11,7 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Player Navigation**: Previous ⏮, Next ⏭, and Random ⇄ buttons skip through the channel schedule; also available in the mini-player and via ← / → arrow keys
 - **Comprehensive Content Types**: Libraries, video playlists, music playlists, categories, and collections
 - **Media Artwork**: Plex poster integration in program bars and tooltips
-- **Color-coded Program Bars**: Movies in green, TV shows in blue, currently playing highlighted in yellow
+- **Program Bars**: Uniform dark background for all bars; currently-airing items highlighted with a warm yellow accent border and background
 - **Live Search**: Filter channels and media boxes in real-time from the header search bar
 - **Channel Grouping**: Optional grouping of channels by type (Libraries, Video Playlists, Music Playlists, Categories, Collections) with collapsible sections, sorted alphabetically
 - **Responsive Design**: Works on desktop and mobile devices
