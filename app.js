@@ -371,9 +371,11 @@ class PlexStationarr {
         console.log('=== DISCOVERING AVAILABLE CONTENT ===');
 
         try {
+            this.showProgress('Connecting to Plex server...');
             await this.testPlexConnection();
 
             // Fetch libraries and playlists concurrently
+            this.showProgress('Fetching libraries and playlists...');
             const [sectionsResult, playlistsResult] = await Promise.allSettled([
                 this.fetchPlexData('/library/sections'),
                 this.fetchPlexData('/playlists')
@@ -411,6 +413,7 @@ class PlexStationarr {
             }
 
             // Fetch genres and collections from all libraries concurrently
+            this.showProgress('Discovering genres and collections...');
             const [genreResults, collectionResults] = await Promise.all([
                 Promise.allSettled(this.availableLibraries.map(lib =>
                     this.fetchPlexData(`/library/sections/${lib.key}/genre`)
@@ -465,20 +468,19 @@ class PlexStationarr {
         }
     }
 
-    async expandTVShowsToEpisodes(mediaItems, libraryName = 'Library', showProgress = true) {
+    async expandTVShowsToEpisodes(mediaItems, libraryName = 'Library', onProgress = null) {
         const expandedContent = [];
         const tvShows = mediaItems.filter(item => item.type === 'show');
         const otherContent = mediaItems.filter(item => item.type !== 'show');
-        
-        // Add non-TV content immediately
+
         expandedContent.push(...otherContent);
-        
+
         if (tvShows.length === 0) {
             return expandedContent;
         }
-        
+
         console.log(`Expanding ${tvShows.length} TV shows concurrently...`);
-        
+
         // Process all TV shows concurrently for speed
         const showPromises = tvShows.map(async (item, index) => {
             try {
@@ -488,11 +490,8 @@ class PlexStationarr {
                     console.log(`Using cached episodes for TV show: ${item.title}`);
                     return this.episodeCache.get(cacheKey);
                 }
-                
-                // Update progress for this specific show
-                if (showProgress) {
-                    this.showProgress(`Expanding ${item.title}...`);
-                }
+
+                if (onProgress) onProgress(`Expanding ${item.title}…`);
                 console.log(`Expanding TV show: ${item.title}`);
                 
                 // Get all seasons
@@ -630,7 +629,11 @@ class PlexStationarr {
         }
 
         let completed = 0;
+        // Progress fires on COMPLETION so the bar advances as channels finish,
+        // not at start (which would jump instantly then go silent).
         const progress = (label) => { if (showProgress) this.showProgress(label, ++completed, totalItems); };
+        // Label-only update with no counter increment — used mid-operation (e.g. TV expansion)
+        const status = (label) => { if (showProgress) this.showProgress(label, completed, totalItems); };
 
         try {
             // All five content groups load concurrently; within each group all items load concurrently.
@@ -642,13 +645,15 @@ class PlexStationarr {
                     ? Promise.all(this.availableLibraries
                         .filter(lib => this.config.selectedLibraries.has(lib.id))
                         .map(async lib => {
-                            progress(`Loading ${lib.title}…`);
                             try {
+                                status(`Fetching ${lib.title}…`);
                                 const data = await this.fetchPlexData(`/library/sections/${lib.key}/all`);
-                                if (!data.MediaContainer.Metadata) return null;
-                                const content = await this.expandTVShowsToEpisodes(data.MediaContainer.Metadata, lib.title, false);
+                                if (!data.MediaContainer.Metadata) { progress(`Loaded ${lib.title}`); return null; }
+                                const onExp = (msg) => status(msg);
+                                const content = await this.expandTVShowsToEpisodes(data.MediaContainer.Metadata, lib.title, onExp);
+                                progress(`Loaded ${lib.title}`);
                                 return { id: lib.id, name: lib.title, type: 'library', logo: this.getChannelLogo(lib.title), content: content.slice(0, 50) };
-                            } catch (e) { console.warn(`Failed to load library ${lib.title}:`, e); return null; }
+                            } catch (e) { console.warn(`Failed to load library ${lib.title}:`, e); progress(`Failed ${lib.title}`); return null; }
                         }))
                     : Promise.resolve([]),
 
@@ -657,11 +662,12 @@ class PlexStationarr {
                     ? Promise.all(this.availableVideoPlaylists
                         .filter(pl => this.config.selectedVideoPlaylists.has(pl.id))
                         .map(async pl => {
-                            progress(`Loading ${pl.title}…`);
                             try {
+                                status(`Fetching ${pl.title}…`);
                                 const data = await this.fetchPlexData(`/playlists/${pl.ratingKey}/items`);
+                                progress(`Loaded ${pl.title}`);
                                 return { id: pl.id, name: `${pl.title} (Video)`, type: 'video-playlist', logo: this.getChannelLogo(pl.title), content: data.MediaContainer.Metadata || [] };
-                            } catch (e) { console.warn(`Failed to load playlist ${pl.title}:`, e); return null; }
+                            } catch (e) { console.warn(`Failed to load playlist ${pl.title}:`, e); progress(`Failed ${pl.title}`); return null; }
                         }))
                     : Promise.resolve([]),
 
@@ -670,11 +676,12 @@ class PlexStationarr {
                     ? Promise.all(this.availableMusicPlaylists
                         .filter(pl => this.config.selectedMusicPlaylists.has(pl.id))
                         .map(async pl => {
-                            progress(`Loading ${pl.title}…`);
                             try {
+                                status(`Fetching ${pl.title}…`);
                                 const data = await this.fetchPlexData(`/playlists/${pl.ratingKey}/items`);
+                                progress(`Loaded ${pl.title}`);
                                 return { id: pl.id, name: `${pl.title} (Music)`, type: 'music-playlist', logo: this.getChannelLogo(pl.title), content: data.MediaContainer.Metadata || [] };
-                            } catch (e) { console.warn(`Failed to load playlist ${pl.title}:`, e); return null; }
+                            } catch (e) { console.warn(`Failed to load playlist ${pl.title}:`, e); progress(`Failed ${pl.title}`); return null; }
                         }))
                     : Promise.resolve([]),
 
@@ -683,16 +690,17 @@ class PlexStationarr {
                     ? Promise.all(this.availableCategories
                         .filter(cat => this.config.selectedCategories.has(cat.id))
                         .map(async cat => {
-                            progress(`Loading ${cat.title}…`);
                             try {
+                                status(`Fetching ${cat.title}…`);
                                 const keyResults = await Promise.allSettled(
                                     (cat.keys || [cat.key]).map(k => this.fetchPlexData(k))
                                 );
                                 const content = keyResults
                                     .filter(r => r.status === 'fulfilled')
                                     .flatMap(r => r.value.MediaContainer.Metadata || []);
+                                progress(`Loaded ${cat.title}`);
                                 return { id: cat.id, name: cat.title, type: 'category', logo: this.getChannelLogo(cat.title), content: content.slice(0, 20) };
-                            } catch (e) { console.warn(`Failed to load category ${cat.title}:`, e); return null; }
+                            } catch (e) { console.warn(`Failed to load category ${cat.title}:`, e); progress(`Failed ${cat.title}`); return null; }
                         }))
                     : Promise.resolve([]),
 
@@ -701,12 +709,14 @@ class PlexStationarr {
                     ? Promise.all(this.availableCollections
                         .filter(col => this.config.selectedCollections.has(col.id))
                         .map(async col => {
-                            progress(`Loading ${col.title}…`);
                             try {
+                                status(`Fetching ${col.title}…`);
                                 const data = await this.fetchPlexData(`/library/collections/${col.key}/items`);
-                                const content = await this.expandTVShowsToEpisodes(data.MediaContainer.Metadata || [], `${col.title} Collection`, false);
+                                const onExp = (msg) => status(msg);
+                                const content = await this.expandTVShowsToEpisodes(data.MediaContainer.Metadata || [], `${col.title} Collection`, onExp);
+                                progress(`Loaded ${col.title}`);
                                 return { id: col.id, name: `${col.title} (${col.libraryTitle})`, type: 'collection', logo: this.getChannelLogo(col.title), content: content.slice(0, 30) };
-                            } catch (e) { console.warn(`Failed to load collection ${col.title}:`, e); return null; }
+                            } catch (e) { console.warn(`Failed to load collection ${col.title}:`, e); progress(`Failed ${col.title}`); return null; }
                         }))
                     : Promise.resolve([]),
             ]);
