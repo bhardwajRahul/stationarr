@@ -1003,18 +1003,26 @@ class PlexStationarr {
     async fetchPlexData(endpoint) {
         const sep = endpoint.includes('?') ? '&' : '?';
         const url = `${this.config.plexUrl}${endpoint}${sep}X-Plex-Token=${this.config.plexToken}`;
-        
+
         try {
             console.log('Fetching Plex data from:', url);
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Plex-Client-Identifier': 'plex-stationarr',
-                    'X-Plex-Product': 'Plex Stationarr',
-                    'X-Plex-Version': '1.0.0',
-                    'X-Plex-Platform': 'Web'
-                }
-            });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            let response;
+            try {
+                response = await fetch(url, {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Plex-Client-Identifier': 'plex-stationarr',
+                        'X-Plex-Product': 'Plex Stationarr',
+                        'X-Plex-Version': '1.0.0',
+                        'X-Plex-Platform': 'Web'
+                    }
+                });
+            } finally {
+                clearTimeout(timeoutId);
+            }
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -1996,20 +2004,26 @@ class PlexStationarr {
 
         // Start new timer if enabled
         if (this.config.ui.autoRefresh) {
-            this.debugLog('Auto-refresh enabled, interval:', this.config.ui.autoRefreshInterval, 'seconds');
+            const interval = Math.max(60, this.config.ui.autoRefreshInterval || 14400);
+            this.debugLog('Auto-refresh enabled, interval:', interval, 'seconds');
             this.autoRefreshTimer = setInterval(() => {
                 this.debugLog('Auto-refreshing content...');
                 this.refreshContent();
-            }, this.config.ui.autoRefreshInterval * 1000);
+            }, interval * 1000);
         } else {
             this.debugLog('Auto-refresh disabled');
         }
     }
 
     async refreshContent() {
+        if (this.isRefreshing) {
+            this.debugLog('Refresh already in progress, skipping');
+            return;
+        }
+        this.isRefreshing = true;
         try {
             this.debugLog('Starting content refresh');
-            
+
             // Clear episode cache to get fresh data
             this.clearEpisodeCache();
             
@@ -2032,6 +2046,8 @@ class PlexStationarr {
         } catch (error) {
             console.error('Error refreshing content:', error);
             this.debugLog('Content refresh failed:', error.message);
+        } finally {
+            this.isRefreshing = false;
         }
     }
 

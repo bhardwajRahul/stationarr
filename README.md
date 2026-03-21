@@ -145,6 +145,9 @@ This is an active development project with ongoing improvements:
 - ✅ Plex session management: stable session IDs and correct cleanup prevent stale transcode conflicts on resume
 - ✅ Playback retry: regenerates a fresh Plex stream URL on error instead of falling back to a test video
 - ✅ Browser fullscreen: black backdrop (no grey background)
+- ✅ Fetch timeout: all Plex API requests abort after 30 seconds so a slow/unresponsive library cannot hang the entire load
+- ✅ Refresh guard: concurrent auto-refresh cycles are prevented; a new refresh is skipped if one is already in progress
+- ✅ Auto-refresh interval floor: enforced minimum of 60 seconds prevents a corrupt/zero localStorage value from triggering a continuous reload loop
 
 ## Contributing
 
