@@ -34,6 +34,13 @@ class PlexStationarr {
             this.collapsedGroups = new Set();
         }
 
+        try {
+            const saved = localStorage.getItem('plexStationarrChannelOrder');
+            this.channelOrder = saved ? JSON.parse(saved) : {};
+        } catch {
+            this.channelOrder = {};
+        }
+
         this.init();
     }
 
@@ -1112,11 +1119,26 @@ class PlexStationarr {
 
     getGroupedChannels(channels) {
         const TYPE_ORDER = ['library', 'video-playlist', 'music-playlist', 'category', 'collection'];
-        const sorted = [...channels].sort((a, b) => a.name.localeCompare(b.name));
         const grouped = {};
-        sorted.forEach(ch => {
+        channels.forEach(ch => {
             if (!grouped[ch.type]) grouped[ch.type] = [];
             grouped[ch.type].push(ch);
+        });
+        // Sort each group: use persisted drag order if available, otherwise alphabetical
+        Object.keys(grouped).forEach(type => {
+            const order = this.channelOrder[type];
+            if (order && order.length > 0) {
+                grouped[type].sort((a, b) => {
+                    const ai = order.indexOf(a.id);
+                    const bi = order.indexOf(b.id);
+                    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name);
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                });
+            } else {
+                grouped[type].sort((a, b) => a.name.localeCompare(b.name));
+            }
         });
         const types = Object.keys(grouped).sort((a, b) => {
             const ai = TYPE_ORDER.indexOf(a), bi = TYPE_ORDER.indexOf(b);
@@ -1149,7 +1171,7 @@ class PlexStationarr {
             return;
         }
 
-        const makeChannelElement = (channel, isFirst) => {
+        const makeChannelElement = (channel, isFirst, draggable = false) => {
             const el = document.createElement('div');
             el.className = 'channel-item';
             el.dataset.channelId = channel.id;
@@ -1158,6 +1180,7 @@ class PlexStationarr {
                 this.selectedChannel = channel.id;
             }
             el.innerHTML = `
+                ${draggable ? '<div class="channel-drag-handle" title="Drag to reorder">⠿</div>' : ''}
                 <div class="channel-logo">${channel.logo}</div>
                 <div class="channel-info">
                     <div class="channel-name">${channel.name}</div>
@@ -1176,6 +1199,8 @@ class PlexStationarr {
         if (this.config.ui.groupChannelsByType) {
             const { grouped, types } = this.getGroupedChannels(visibleChannels);
             let isFirst = true;
+            let dragSrc = null;
+
             types.forEach(type => {
                 const header = document.createElement('div');
                 header.className = 'channel-group-header';
@@ -1186,9 +1211,47 @@ class PlexStationarr {
                 channelsList.appendChild(header);
 
                 grouped[type].forEach(channel => {
-                    const el = makeChannelElement(channel, isFirst);
+                    const el = makeChannelElement(channel, isFirst, true);
                     el.dataset.group = type;
+                    el.draggable = true;
                     if (this.collapsedGroups.has(type)) el.style.display = 'none';
+
+                    el.addEventListener('dragstart', (e) => {
+                        dragSrc = el;
+                        el.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', channel.id);
+                    });
+                    el.addEventListener('dragend', () => {
+                        el.classList.remove('dragging');
+                        document.querySelectorAll('.channel-item')
+                            .forEach(i => i.classList.remove('drag-over-top', 'drag-over-bottom'));
+                        dragSrc = null;
+                    });
+                    el.addEventListener('dragover', (e) => {
+                        if (!dragSrc || dragSrc.dataset.group !== type || dragSrc === el) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        const mid = el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
+                        el.classList.remove('drag-over-top', 'drag-over-bottom');
+                        el.classList.add(e.clientY < mid ? 'drag-over-top' : 'drag-over-bottom');
+                    });
+                    el.addEventListener('dragleave', () => {
+                        el.classList.remove('drag-over-top', 'drag-over-bottom');
+                    });
+                    el.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        if (!dragSrc || dragSrc.dataset.group !== type || dragSrc === el) return;
+                        const mid = el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
+                        if (e.clientY < mid) {
+                            el.parentNode.insertBefore(dragSrc, el);
+                        } else {
+                            el.parentNode.insertBefore(dragSrc, el.nextSibling);
+                        }
+                        el.classList.remove('drag-over-top', 'drag-over-bottom');
+                        this.saveChannelOrder(type);
+                    });
+
                     channelsList.appendChild(el);
                     isFirst = false;
                 });
@@ -1383,6 +1446,21 @@ class PlexStationarr {
         document.querySelectorAll(`.channel-row[data-group="${type}"]`).forEach(el => {
             el.style.display = isCollapsed ? '' : 'none';
         });
+    }
+
+    saveChannelOrder(type) {
+        const items = document.querySelectorAll(`.channel-item[data-group="${type}"]`);
+        this.channelOrder[type] = [...items].map(el => el.dataset.channelId);
+        localStorage.setItem('plexStationarrChannelOrder', JSON.stringify(this.channelOrder));
+        this.reorderChannels();
+        this.renderEPG();
+    }
+
+    reorderChannels() {
+        const { grouped, types } = this.getGroupedChannels(this.channels);
+        const reordered = [];
+        types.forEach(type => reordered.push(...grouped[type]));
+        this.channels = reordered;
     }
 
     filterBySearch(query) {

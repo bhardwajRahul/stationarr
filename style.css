@@ -299,6 +299,24 @@ body {
 
 .channel-item:hover { background: var(--surface-2); }
 
+.channel-drag-handle {
+    color: var(--text-3);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding-right: 0.5rem;
+    cursor: grab;
+    flex-shrink: 0;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.channel-item:hover .channel-drag-handle { opacity: 1; }
+.channel-drag-handle:active { cursor: grabbing; }
+
+.channel-item.dragging { opacity: 0.35; }
+.channel-item.drag-over-top    { box-shadow: inset 0  2px 0 var(--accent); }
+.channel-item.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--accent); }
+
 .channel-item.active {
     background: var(--surface-2);
     border-left-color: var(--accent);
