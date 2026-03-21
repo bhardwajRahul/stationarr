@@ -8,7 +8,9 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Real-time Updates**: Auto-refresh content with configurable intervals
 - **Video Playback**: Stream media directly in the browser with position memory and EPG-aware resume
 - **Music Playback**: Plexamp-style audio player for music playlists with album artwork, blurred backdrop, seek bar, volume control, and mini-player
+- **Global Shuffle**: ⇄ Shuffle button in the header instantly plays a random item from any visible channel; each subsequent track also plays randomly until turned off
 - **Player Navigation**: Previous ⏮, Next ⏭, and Random ⇄ buttons skip through the channel schedule; also available in the mini-player and via ← / → arrow keys
+- **Stable Broadcast Schedule**: deterministic, epoch-anchored schedule so the same content is always airing at the same time on every reload — just like a real TV channel
 - **Comprehensive Content Types**: Libraries, video playlists, music playlists, categories, and collections
 - **Media Artwork**: Plex poster integration in program bars and tooltips
 - **Program Bars**: Uniform dark background for all bars; currently-airing items highlighted with a warm yellow accent border and background
@@ -88,8 +90,8 @@ Use the settings panel (⚙️ button) to configure. The panel is organised into
 
 - **Server**: Plex URL, authentication token, and connection test
 - **Content**: Hours to display; Libraries, Video Playlists, Music Playlists, Categories, and Collections — each list sorted alphabetically with All / None / Invert selection buttons
-- **Display**: EPG time scale, channel grouping, posters, logos, animations, tooltips
-- **Playback**: Broadcast-position resume, position memory, auto-play, notifications, volume
+- **Display**: EPG time scale, channel grouping, posters, animations, tooltips
+- **Playback**: Stable broadcast schedule, broadcast-position resume, position memory, auto-play, notifications, volume
 - **Auto-Refresh**: Toggle and interval (30 min, 1 hour, 4 hours default, 8 hours)
 - **Advanced**: Content caching, low bandwidth mode, debug logging
 
@@ -135,7 +137,7 @@ This is an active development project with ongoing improvements:
 - ✅ TV show episode expansion
 - ✅ Live search with clear button
 - ✅ Interactive EPG time scale (drag handle + settings slider, persisted)
-- ✅ Color-coded program bars (movies/TV shows/currently playing)
+- ✅ Program bars: uniform dark background; currently-airing bar highlighted with warm yellow accent
 - ✅ EPG-aware playback resume (seek to live position on click)
 - ✅ Current time indicator aligned to time bar
 - ✅ Channel grouping by type with collapsible sections (alphabetically sorted, state persisted)
@@ -155,6 +157,10 @@ This is an active development project with ongoing improvements:
 - ✅ Drag-to-reorder channels: grip handle appears on hover, drag within a bellow to reposition; order persists to localStorage and EPG grid updates immediately
 - ✅ Player navigation: ⏮ Previous, ⏭ Next, ⇄ Random buttons in the player header and mini-player; ← / → arrow keys also work; schedule is cached per channel so navigation is consistent
 - ✅ Music playlist audio playback: Plexamp-style modal player with blurred album-art backdrop, centred artwork, track/artist/album info, seek bar with elapsed/total time, ⏮/▶⏸/⏭/⇄ controls, volume slider; minimises to a persistent mini-player; keyboard shortcuts (Space, ←, →, Esc) work when audio player is active
+- ✅ Stable broadcast schedule: content order seeded by channel ID and anchored to a fixed epoch so the same title is always airing at the same time regardless of page reload; toggle in Settings → Playback
+- ✅ Global shuffle: ⇄ Shuffle button in the header picks a random item from any visible channel and continues randomly after each track ends; highlighted in accent colour when active
+- ✅ Concurrent loading: all Plex API fetches (libraries, playlists, genres, collections, TV show expansion) run in parallel — load time is now bounded by the slowest single request rather than the sum of all
+- ✅ Loading progress: detailed status throughout every phase (connecting, fetching, expanding TV shows per-title, completing) so the progress bar never appears stuck
 
 ## Contributing
 
