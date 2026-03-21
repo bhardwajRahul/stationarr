@@ -230,10 +230,15 @@ class PlexStationarr {
             }
         });
 
-        // All / None buttons for content lists
+        // All / None / Invert buttons for content lists
         configModal.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-tiny');
             if (!btn) return;
+            if (btn.dataset.selectInvert) {
+                const list = document.getElementById(btn.dataset.selectInvert);
+                if (list) list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = !cb.checked);
+                return;
+            }
             const listId = btn.dataset.selectAll || btn.dataset.selectNone;
             const checked = !!btn.dataset.selectAll;
             const list = document.getElementById(listId);
