@@ -89,7 +89,8 @@ class PlexStationarr {
                 defaultVolume: 80,
                 rememberPosition: true,
                 showPlaybackNotifications: true,
-                resumeFromCurrentPosition: true
+                resumeFromCurrentPosition: true,
+                stableBroadcastSchedule: true
             },
             advanced: {
                 enableDebugLogging: false,
@@ -1543,14 +1544,19 @@ class PlexStationarr {
         if (this.programScheduleCache[channel.id]) {
             return this.programScheduleCache[channel.id];
         }
+
+        if (this.config.playback.stableBroadcastSchedule) {
+            return this._generateStableSchedule(channel);
+        }
+
         const programs = [];
         const startTime = new Date(this.timeSlots[0]);
         const endTime = new Date(this.timeSlots[this.timeSlots.length - 1]);
-        endTime.setMinutes(endTime.getMinutes() + 30); // Add 30 minutes to end time
-        
+        endTime.setMinutes(endTime.getMinutes() + 30);
+
         let currentTime = new Date(startTime);
-        
-        while (currentTime < endTime && programs.length < 50) { // Prevent infinite loop
+
+        while (currentTime < endTime && programs.length < 50) {
             if (!channel.content || channel.content.length === 0) {
                 programs.push({
                     title: 'No Content Available',
@@ -1563,12 +1569,11 @@ class PlexStationarr {
                 continue;
             }
 
-            // Randomly select content instead of sequential
             const randomIndex = Math.floor(Math.random() * channel.content.length);
             const content = channel.content[randomIndex];
             const duration = this.getContentDuration(content);
             const programEndTime = new Date(currentTime.getTime() + (duration * 60000));
-            
+
             programs.push({
                 title: content.title || content.name || 'Unknown',
                 duration: duration,
@@ -1581,18 +1586,142 @@ class PlexStationarr {
                 summary: content.summary,
                 rating: content.rating,
                 Media: content.Media,
-                // Episode-specific fields (if available)
                 showTitle: content.showTitle,
                 seasonTitle: content.seasonTitle,
                 seasonIndex: content.seasonIndex,
                 episodeIndex: content.episodeIndex,
                 displayTitle: content.displayTitle,
                 originalShowData: content.originalShowData,
-                // Pass through all original content properties for debugging
                 originalContent: content
             });
-            
+
             currentTime = programEndTime;
+        }
+
+        this.programScheduleCache[channel.id] = programs;
+        return programs;
+    }
+
+    // Seeded PRNG (mulberry32) — same seed always produces the same sequence
+    _seededRandom(seed) {
+        let s = seed >>> 0;
+        return () => {
+            s += 0x6d2b79f5;
+            let t = Math.imul(s ^ (s >>> 15), 1 | s);
+            t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    _hashString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+        }
+        return Math.abs(hash);
+    }
+
+    // Stable content duration — no randomness so positions are deterministic
+    _getStableDuration(content) {
+        if (content.duration && content.duration > 1000) return Math.round(content.duration / 60000);
+        if (content.duration) return content.duration;
+        switch (content.type) {
+            case 'movie': return 120;
+            case 'episode':
+            case 'show': return 30;
+            default: return 45;
+        }
+    }
+
+    _generateStableSchedule(channel) {
+        const epgStart = new Date(this.timeSlots[0]);
+        const epgEnd = new Date(this.timeSlots[this.timeSlots.length - 1]);
+        epgEnd.setMinutes(epgEnd.getMinutes() + 30);
+
+        const programs = [];
+
+        if (!channel.content || channel.content.length === 0) {
+            let t = new Date(epgStart);
+            while (t < epgEnd) {
+                programs.push({ title: 'No Content Available', duration: 30, startTime: new Date(t), endTime: new Date(t.getTime() + 1800000), type: 'filler' });
+                t.setMinutes(t.getMinutes() + 30);
+            }
+            this.programScheduleCache[channel.id] = programs;
+            return programs;
+        }
+
+        // Deterministic shuffle seeded by channel ID
+        const rng = this._seededRandom(this._hashString(String(channel.id)));
+        const content = [...channel.content];
+        for (let i = content.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [content[i], content[j]] = [content[j], content[i]];
+        }
+
+        // Pre-compute stable durations
+        const durations = content.map(c => this._getStableDuration(c));
+        const totalCycleMs = durations.reduce((a, b) => a + b, 0) * 60000;
+        if (totalCycleMs === 0) return programs;
+
+        // Anchor to a fixed epoch (Jan 1 2024 UTC) so schedule is absolute
+        const EPOCH = Date.UTC(2024, 0, 1);
+        const elapsedMs = Date.now() - EPOCH;
+        const posInCycleMs = ((elapsedMs % totalCycleMs) + totalCycleMs) % totalCycleMs;
+
+        // Find which item is "on air" right now and how far into it we are
+        let acc = 0;
+        let nowItemIndex = 0;
+        let offsetIntoNowItem = 0;
+        for (let i = 0; i < content.length; i++) {
+            const dur = durations[i] * 60000;
+            if (acc + dur > posInCycleMs) {
+                nowItemIndex = i;
+                offsetIntoNowItem = posInCycleMs - acc;
+                break;
+            }
+            acc += dur;
+        }
+
+        // Actual ms timestamp when the current item started
+        const nowItemStartMs = Date.now() - offsetIntoNowItem;
+
+        // Walk backwards from the current item until we cover epgStart
+        let scheduleStartMs = nowItemStartMs;
+        let scheduleStartIndex = nowItemIndex;
+        while (scheduleStartMs > epgStart.getTime()) {
+            scheduleStartIndex = (scheduleStartIndex - 1 + content.length) % content.length;
+            scheduleStartMs -= durations[scheduleStartIndex] * 60000;
+        }
+
+        // Build forward until we cover epgEnd
+        let t = scheduleStartMs;
+        let idx = scheduleStartIndex;
+        while (t < epgEnd.getTime() && programs.length < 200) {
+            const c = content[idx];
+            const durMs = durations[idx] * 60000;
+            const endMs = t + durMs;
+            programs.push({
+                title: c.title || c.name || 'Unknown',
+                duration: durations[idx],
+                startTime: new Date(t),
+                endTime: new Date(endMs),
+                year: c.year,
+                type: c.type,
+                ratingKey: c.ratingKey || c.key,
+                key: c.key,
+                summary: c.summary,
+                rating: c.rating,
+                Media: c.Media,
+                showTitle: c.showTitle,
+                seasonTitle: c.seasonTitle,
+                seasonIndex: c.seasonIndex,
+                episodeIndex: c.episodeIndex,
+                displayTitle: c.displayTitle,
+                originalShowData: c.originalShowData,
+                originalContent: c
+            });
+            t = endMs;
+            idx = (idx + 1) % content.length;
         }
 
         this.programScheduleCache[channel.id] = programs;
@@ -1601,19 +1730,14 @@ class PlexStationarr {
 
     getContentDuration(content) {
         if (content.duration) {
-            // Plex durations are usually in milliseconds, convert to minutes
-            if (content.duration > 1000) {
-                return Math.round(content.duration / 60000);
-            }
+            if (content.duration > 1000) return Math.round(content.duration / 60000);
             return content.duration;
         }
-        
-        // Default durations based on content type
         switch (content.type) {
-            case 'movie': return Math.floor(Math.random() * 60) + 90; // 90-150 minutes
-            case 'episode': 
-            case 'show': return Math.floor(Math.random() * 15) + 30; // 30-45 minutes
-            default: return Math.floor(Math.random() * 30) + 30; // 30-60 minutes
+            case 'movie': return Math.floor(Math.random() * 60) + 90;
+            case 'episode':
+            case 'show': return Math.floor(Math.random() * 15) + 30;
+            default: return Math.floor(Math.random() * 30) + 30;
         }
     }
 
@@ -1827,6 +1951,7 @@ class PlexStationarr {
         document.getElementById('volumeDisplay').textContent = this.config.playback.defaultVolume + '%';
         document.getElementById('rememberPosition').checked = this.config.playback.rememberPosition;
         document.getElementById('showPlaybackNotifications').checked = this.config.playback.showPlaybackNotifications;
+        document.getElementById('stableBroadcastSchedule').checked = this.config.playback.stableBroadcastSchedule;
         document.getElementById('resumeFromCurrentPosition').checked = this.config.playback.resumeFromCurrentPosition;
 
         // Populate advanced settings
@@ -1969,6 +2094,7 @@ class PlexStationarr {
         this.config.playback.defaultVolume = parseInt(document.getElementById('defaultVolume').value);
         this.config.playback.rememberPosition = document.getElementById('rememberPosition').checked;
         this.config.playback.showPlaybackNotifications = document.getElementById('showPlaybackNotifications').checked;
+        this.config.playback.stableBroadcastSchedule = document.getElementById('stableBroadcastSchedule').checked;
         this.config.playback.resumeFromCurrentPosition = document.getElementById('resumeFromCurrentPosition').checked;
 
         // Save advanced settings
@@ -2025,7 +2151,10 @@ class PlexStationarr {
         
         // Save to localStorage
         this.saveSettings();
-        
+
+        // Clear schedule cache so the new stable/random setting takes effect immediately
+        this.programScheduleCache = {};
+
         // Reload content with new settings
         this.showProgress('Applying settings and reloading channels...');
         try {
