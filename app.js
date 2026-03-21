@@ -1221,30 +1221,36 @@ class PlexStationarr {
                     const draggedItems = document.querySelectorAll(`.channel-item[data-group="${draggedType}"]`);
                     
                     if (e.clientY < mid) {
-                        // Insert before this header
+                        // Insert before this header - header first, then items after the header
                         header.parentNode.insertBefore(groupDragSrc, header);
+                        // Insert items after the header (which is now right before the original header)
+                        let insertPoint = groupDragSrc.nextElementSibling; // This should be the original header
                         draggedItems.forEach(item => {
-                            header.parentNode.insertBefore(item, header);
+                            header.parentNode.insertBefore(item, insertPoint);
                         });
                     } else {
                         // Insert after this header and its items
-                        const nextGroup = header.nextElementSibling;
                         let insertAfter = header;
                         while (insertAfter.nextElementSibling && !insertAfter.nextElementSibling.classList.contains('channel-group-header')) {
                             insertAfter = insertAfter.nextElementSibling;
                         }
                         
+                        // Insert header first
                         if (insertAfter.nextElementSibling) {
                             insertAfter.parentNode.insertBefore(groupDragSrc, insertAfter.nextElementSibling);
-                            draggedItems.forEach(item => {
-                                insertAfter.parentNode.insertBefore(item, insertAfter.nextElementSibling);
-                            });
                         } else {
                             insertAfter.parentNode.appendChild(groupDragSrc);
-                            draggedItems.forEach(item => {
-                                insertAfter.parentNode.appendChild(item);
-                            });
                         }
+                        
+                        // Then insert items after the header
+                        let insertPoint = groupDragSrc.nextElementSibling;
+                        draggedItems.forEach(item => {
+                            if (insertPoint) {
+                                groupDragSrc.parentNode.insertBefore(item, insertPoint);
+                            } else {
+                                groupDragSrc.parentNode.appendChild(item);
+                            }
+                        });
                     }
                     
                     header.classList.remove('drag-over-top', 'drag-over-bottom');
