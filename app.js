@@ -55,7 +55,7 @@ class PlexStationarr {
         this.currentChannel = null;
         this.currentProgramIndex = -1;
         this.programScheduleCache = {}; // channelId → program[]
-        this.globalShuffle = false;
+
         this.audioElement = null;
         this.currentAudioItem = null;
         this.isAudioMinimized = false;
@@ -2813,11 +2813,7 @@ class PlexStationarr {
     }
 
     toggleGlobalShuffle() {
-        this.globalShuffle = !this.globalShuffle;
-        const btn = this.getElement('globalShuffleBtn');
-        btn.classList.toggle('active', this.globalShuffle);
-        btn.title = this.globalShuffle ? 'Shuffle all: ON — click to turn off' : 'Shuffle all channels';
-        if (this.globalShuffle) this.playGlobalRandom();
+        this.playGlobalRandom();
     }
 
     randomizeChannelContent() {
@@ -2866,7 +2862,6 @@ class PlexStationarr {
     }
 
     playNext() {
-        if (this.globalShuffle) { this.playGlobalRandom(); return; }
         if (!this.currentChannel) return;
         const schedule = this.generateProgramSchedule(this.currentChannel);
         if (!schedule.length) return;
@@ -3497,7 +3492,6 @@ class PlexStationarr {
                         this.showNotification('Video completed', 'info');
                     }
                 }
-                if (this.globalShuffle) this.playGlobalRandom();
             });
             
             miniVideo.addEventListener('play', () => {
