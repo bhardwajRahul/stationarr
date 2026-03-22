@@ -14,7 +14,7 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 - **Stable Broadcast Schedule**: deterministic, epoch-anchored schedule so the same content is always airing at the same time on every reload — just like a real TV channel
 - **Comprehensive Content Types**: Libraries, video playlists, music playlists, categories, and collections
 - **Media Artwork**: Plex poster integration in program bars and tooltips
-- **Program Bars**: Uniform dark background for all bars; currently-airing items highlighted with a warm yellow accent border and background
+- **Program Bars**: Uniform dark background for all bars; currently-airing items highlighted with the theme accent colour — opacity configurable via settings
 - **Live Search**: Filter channels and media boxes in real-time from the header search bar
 - **Channel Grouping**: Optional grouping of channels by type (Libraries, Video Playlists, Music Playlists, Categories, Collections) with collapsible sections, sorted alphabetically
 - **Responsive Design**: Works on desktop and mobile devices
@@ -119,7 +119,7 @@ Use the settings panel (⚙️ button) to configure. The panel is organised into
 
 - **Server**: Plex URL, authentication token, and connection test
 - **Content**: Hours to display; Libraries, Video Playlists, Music Playlists, Categories, and Collections — each list sorted alphabetically with All / None / Invert selection buttons
-- **Display**: EPG time scale, channel grouping, posters, animations, tooltips, **notification position** (top-left, top-right, bottom-left, bottom-right)
+- **Display**: Theme accent colour, active media bar opacity, EPG time scale, channel grouping, posters, animations, tooltips, **notification position** (top-left, top-right, bottom-left, bottom-right)
 - **Playback**: Stable broadcast schedule, broadcast-position resume, position memory, auto-play, notifications, volume
 - **Auto-Refresh**: Toggle and interval (30 min, 1 hour, 4 hours default, 8 hours)
 - **Advanced**: Content caching, low bandwidth mode, debug logging
@@ -145,6 +145,7 @@ Use the settings panel (⚙️ button) to configure. The panel is organised into
 stationarr/
 ├── config.json                # Your Plex URL and token (gitignored — create from example)
 ├── config.example.json        # Config template — copy to config.json and fill in your details
+├── favicon.svg                # App icon (TV play symbol, accent-coloured)
 ├── index.html                 # Main HTML structure
 ├── app.js                     # Core application logic
 ├── style.css                  # Styling and responsive design
@@ -193,7 +194,7 @@ This is an active development project with ongoing improvements:
 - ✅ Show-type items auto-resolve to first episode for playback
 - ✅ Settings panel redesigned with collapsible accordion sections and All/None/Invert list buttons
 - ✅ Modern UI redesign: Plex-inspired dark theme with CSS design tokens, Inter font, refined typography and spacing
-- ✅ Program bar styling: uniform dark background for all bars; active/currently-airing bars highlighted with warm yellow accent border and background
+- ✅ Program bar styling: uniform dark background for all bars; active/currently-airing bars highlighted with the theme accent colour (opacity configurable in Display settings)
 - ✅ Plex session management: unique timestamped session IDs per request and correct cleanup prevent orphaned transcode sessions
 - ✅ Playback retry: on seek-related failure (e.g. poor MKV seek index), retries from the beginning with a notification rather than showing an error
 - ✅ Browser fullscreen: black backdrop (no grey background)
@@ -211,6 +212,9 @@ This is an active development project with ongoing improvements:
 - ✅ Loading progress: detailed status throughout every phase (connecting, fetching, expanding TV shows per-title, completing) so the progress bar never appears stuck
 - ✅ config.json: Plex URL and token loaded from a gitignored server-side config file — no credentials in source code
 - ✅ Smart settings save: UI-only changes (notification position, tooltips, animations, playback preferences) apply instantly without reloading content; full reload only triggered for server/channel changes
+- ✅ Favicon: browser tab shows the Stationarr TV play icon, coloured to match the current accent colour dynamically
+- ✅ Header logo icon: TV play icon displayed next to the Stationarr title, styled in the accent colour
+- ✅ Accent-coloured media bars: active program bars use the theme accent colour instead of a fixed orange; background, border, text, and play chevron all derive from the accent colour automatically
 
 ## Contributing
 
