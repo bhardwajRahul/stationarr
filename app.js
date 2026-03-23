@@ -3093,10 +3093,8 @@ class PlexStationarr {
         });
 
         document.getElementById('audioVolumeSlider').addEventListener('input', (e) => {
-            if (this.audioElement) {
-                this.audioElement.volume = e.target.value / 100;
-                this._updateAudioVolIcon();
-            }
+            if (this.audioElement) this.audioElement.volume = e.target.value / 100;
+            this._updateAudioVolIcon();
         });
         // Set initial volume slider and icon to match config
         document.getElementById('audioVolumeSlider').value = this.config.playback.defaultVolume || 80;
