@@ -27,13 +27,17 @@ A modern EPG-style web interface for Plex Media Server that displays your media 
 ### EPG Guide
 ![EPG guide showing channels, program bars, and a media tooltip](screenshots/epg-guide.jpg)
 
-### Video Player
-![Video player with playback controls and media info](screenshots/video-player.jpg)
+### Video & Audio Player
+https://github.com/user-attachments/assets/ca05939f-9e39-48a5-a2e6-aaf504bdbcf8
 
 ### Settings
-<img src="screenshots/settings.jpg" alt="Configuration panel with display, playback, and server options" width="400">
+https://github.com/user-attachments/assets/6796e319-1c27-4f54-a3cc-1fe641f53ac5
 
 ## Quick Start
+https://github.com/user-attachments/assets/11e11ab0-94a4-4bff-8452-9776a61d5ba6
+
+https://github.com/user-attachments/assets/6a44a4c5-011f-4800-bfb0-a0f8fc032292
+
 
 ### 1. Create your config file
 
