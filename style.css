@@ -1106,6 +1106,7 @@ kbd {
     display: flex; align-items: center; justify-content: center;
 }
 .control-btn:hover { background: var(--surface-4); color: var(--text-1); border-color: var(--border-md); }
+.control-btn.skip-btn { width: auto; padding: 0.4rem 0.55rem; font-size: 0.78rem; letter-spacing: 0.02em; }
 
 .video-wrapper {
     position: relative;

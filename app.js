@@ -145,7 +145,8 @@ class PlexStationarr {
                 rememberPosition: true,
                 showPlaybackNotifications: true,
                 resumeFromCurrentPosition: true,
-                stableBroadcastSchedule: true
+                stableBroadcastSchedule: true,
+                skipInterval: 30
             },
             advanced: {
                 enableDebugLogging: false,
@@ -376,6 +377,7 @@ class PlexStationarr {
 
         // Video player event listeners
         this.setupVideoPlayerListeners();
+        this.updateSkipButtons();
 
         // Context menu event listeners
         this.setupContextMenuListeners();
@@ -401,6 +403,8 @@ class PlexStationarr {
         document.getElementById('prevProgram').addEventListener('click', () => this.playPrevious());
         document.getElementById('nextProgram').addEventListener('click', () => this.playNext());
         document.getElementById('randomProgram').addEventListener('click', () => this.playRandom());
+        document.getElementById('skipBackBtn').addEventListener('click', () => this.skipVideo(-1));
+        document.getElementById('skipFwdBtn').addEventListener('click', () => this.skipVideo(1));
         document.getElementById('miniPrev').addEventListener('click', () => this.playPrevious());
         document.getElementById('miniNext').addEventListener('click', () => this.playNext());
 
@@ -2187,6 +2191,7 @@ class PlexStationarr {
         document.getElementById('showPlaybackNotifications').checked = this.config.playback.showPlaybackNotifications;
         document.getElementById('stableBroadcastSchedule').checked = this.config.playback.stableBroadcastSchedule;
         document.getElementById('resumeFromCurrentPosition').checked = this.config.playback.resumeFromCurrentPosition;
+        document.getElementById('skipInterval').value = this.config.playback.skipInterval || 30;
 
         // Populate advanced settings
         document.getElementById('enableDebugLogging').checked = this.config.advanced.enableDebugLogging;
@@ -2366,6 +2371,8 @@ class PlexStationarr {
         this.config.playback.showPlaybackNotifications = document.getElementById('showPlaybackNotifications').checked;
         this.config.playback.stableBroadcastSchedule = document.getElementById('stableBroadcastSchedule').checked;
         this.config.playback.resumeFromCurrentPosition = document.getElementById('resumeFromCurrentPosition').checked;
+        this.config.playback.skipInterval = parseInt(document.getElementById('skipInterval').value);
+        this.updateSkipButtons();
 
         // Save advanced settings
         this.config.advanced.enableDebugLogging = document.getElementById('enableDebugLogging').checked;
@@ -2927,6 +2934,24 @@ class PlexStationarr {
         if (!content?.length) return;
         const item = content[Math.floor(Math.random() * content.length)];
         this.playProgram({ ...item, originalContent: item }, this.currentChannel, -1, true);
+    }
+
+    skipVideo(direction) {
+        if (!this.videoPlayer) return;
+        const secs = (this.config.playback.skipInterval || 30) * direction;
+        this.videoPlayer.currentTime = Math.max(0, Math.min(
+            this.videoPlayer.duration || 0,
+            this.videoPlayer.currentTime + secs
+        ));
+    }
+
+    updateSkipButtons() {
+        const secs = this.config.playback.skipInterval || 30;
+        const label = secs >= 60 ? `${secs / 60}m` : `${secs}s`;
+        const back = document.getElementById('skipBackBtn');
+        const fwd  = document.getElementById('skipFwdBtn');
+        if (back) { back.textContent = `-${label}`; back.title = `Skip back ${label}`; }
+        if (fwd)  { fwd.textContent  = `+${label}`; fwd.title  = `Skip forward ${label}`; }
     }
 
     // ── Audio player ────────────────────────────────────────────
