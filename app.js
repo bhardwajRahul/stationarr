@@ -59,6 +59,7 @@ class PlexStationarr {
         this.audioElement = null;
         this.currentAudioItem = null;
         this.isAudioMinimized = false;
+        this._suppressVolumeSave = false;
 
         this.init();
     }
@@ -277,6 +278,17 @@ class PlexStationarr {
         const testPlexConnection = document.getElementById('testPlexConnection');
 
         this.setupEpgScaleHandle();
+
+        // Re-apply persisted volume after fullscreen transitions (some browsers reset it)
+        const onFullscreenChange = () => {
+            if (!this.videoPlayer) return;
+            this._suppressVolumeSave = true;
+            this.videoPlayer.volume = (this.config.playback.defaultVolume || 80) / 100;
+            this.videoPlayer.muted = this.config.playback.muted || false;
+            setTimeout(() => { this._suppressVolumeSave = false; }, 200);
+        };
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
         const searchInput = document.getElementById('searchInput');
         const searchClear = document.getElementById('searchClear');
@@ -1736,22 +1748,6 @@ class PlexStationarr {
         return programs;
     }
 
-    _volIcon(muted, pct) {
-        if (muted || pct === 0) return '\uD83D\uDD07\uFE0E'; // 🔇 text
-        if (pct < 34)           return '\uD83D\uDD08\uFE0E'; // 🔈 text
-        if (pct < 67)           return '\uD83D\uDD09\uFE0E'; // 🔉 text
-        return                         '\uD83D\uDD0A\uFE0E'; // 🔊 text
-    }
-
-    _updateAudioVolIcon() {
-        const el = document.getElementById('audioVolIcon');
-        if (!el) return;
-        const slider = document.getElementById('audioVolumeSlider');
-        const pct = slider ? parseInt(slider.value) : (this.config.playback.defaultVolume || 80);
-        const muted = this.audioElement ? this.audioElement.muted : false;
-        el.textContent = this._volIcon(muted, pct);
-    }
-
     // Seeded PRNG (mulberry32) — same seed always produces the same sequence
     _seededRandom(seed) {
         let s = seed >>> 0;
@@ -3094,11 +3090,9 @@ class PlexStationarr {
 
         document.getElementById('audioVolumeSlider').addEventListener('input', (e) => {
             if (this.audioElement) this.audioElement.volume = e.target.value / 100;
-            this._updateAudioVolIcon();
         });
-        // Set initial volume slider and icon to match config
+        // Set initial volume slider to match config
         document.getElementById('audioVolumeSlider').value = this.config.playback.defaultVolume || 80;
-        this._updateAudioVolIcon();
 
         // Keyboard shortcuts for audio player
         window.addEventListener('keydown', (e) => {
@@ -3385,6 +3379,7 @@ class PlexStationarr {
 
         // Persist volume and mute changes made via the native video controls
         this.videoPlayer.addEventListener('volumechange', () => {
+            if (this._suppressVolumeSave) return;
             this.config.playback.defaultVolume = Math.round(this.videoPlayer.volume * 100);
             this.config.playback.muted = this.videoPlayer.muted;
             this.saveSettings();
