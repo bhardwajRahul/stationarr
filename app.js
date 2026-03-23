@@ -113,6 +113,7 @@ class PlexStationarr {
                 categories: true,      // Auto-enabled (when available)
                 collections: true      // Auto-enabled (when available)
             },
+            librariesConfigured: false,
             selectedLibraries: new Set(),
             selectedPlaylists: new Set(),
             selectedVideoPlaylists: new Set(),
@@ -577,10 +578,11 @@ class PlexStationarr {
             this.availableCollections = allCollections;
             console.log('Available collections:', this.availableCollections.length);
 
-            // Auto-select all libraries on first run if nothing is selected
-            if (this.config.selectedLibraries.size === 0 && this.availableLibraries.length > 0) {
+            // Auto-select all libraries on first run (not yet configured by the user)
+            if (!this.config.librariesConfigured && this.availableLibraries.length > 0) {
                 console.log('First run: auto-selecting all libraries');
                 this.config.selectedLibraries = new Set(this.availableLibraries.map(lib => lib.id));
+                this.config.librariesConfigured = true;
                 this.saveSettings();
             }
 
@@ -2339,6 +2341,7 @@ class PlexStationarr {
         this.config.advanced.lowBandwidthMode = document.getElementById('lowBandwidthMode').checked;
         
         // Save selected libraries
+        this.config.librariesConfigured = true;
         this.config.selectedLibraries.clear();
         this.availableLibraries.forEach(library => {
             const checkbox = document.getElementById(`library_${library.key}`);
@@ -2852,13 +2855,13 @@ class PlexStationarr {
     }
 
     playGlobalRandom() {
-        const visible = this.channels.filter(c => this.config.visibleChannels.has(c.id) && c.content?.length);
+        let visible = this.channels.filter(c => this.config.visibleChannels.has(c.id) && c.content?.length);
+        if (!visible.length) visible = this.channels.filter(c => c.content?.length);
         if (!visible.length) return;
         const channel = visible[Math.floor(Math.random() * visible.length)];
-        const schedule = this.generateProgramSchedule(channel);
-        if (!schedule.length) return;
-        const idx = Math.floor(Math.random() * schedule.length);
-        this.playProgram(schedule[idx], channel, idx, true);
+        const content = channel.content;
+        const item = content[Math.floor(Math.random() * content.length)];
+        this.playProgram({ ...item, originalContent: item }, channel, -1, true);
     }
 
     playNext() {
@@ -2879,12 +2882,10 @@ class PlexStationarr {
 
     playRandom() {
         if (!this.currentChannel) return;
-        const schedule = this.generateProgramSchedule(this.currentChannel);
-        if (schedule.length <= 1) return;
-        let randIndex;
-        do { randIndex = Math.floor(Math.random() * schedule.length); }
-        while (randIndex === this.currentProgramIndex);
-        this.playProgram(schedule[randIndex], this.currentChannel, randIndex, true);
+        const content = this.currentChannel.content;
+        if (!content?.length) return;
+        const item = content[Math.floor(Math.random() * content.length)];
+        this.playProgram({ ...item, originalContent: item }, this.currentChannel, -1, true);
     }
 
     // ── Audio player ────────────────────────────────────────────
