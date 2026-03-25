@@ -2066,7 +2066,7 @@ class PlexStationarr {
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">${isEpisode ? `${showTitle} - ${seasonTitle}` : program.title}</div>
                     ${isEpisode ? `<div style="font-size: 0.85rem; color: #fff; margin-bottom: 0.25rem;">Episode ${episodeNum}: ${program.title}</div>` : ''}
                     ${program.year ? `<div style="font-size: 0.8rem; color: #ccc;">Year: ${program.year}</div>` : ''}
-                    ${program.duration ? `<div style="font-size: 0.8rem; color: #ccc;">Duration: ${this.formatDuration(program.duration)}</div>` : ''}
+                    ${program.duration ? `<div style="font-size: 0.8rem; color: #ccc;">Duration: ${this.formatDuration(program.duration * 60000)}</div>` : ''}
                     ${program.type ? `<div style="font-size: 0.8rem; color: #ccc;">Type: ${program.type.charAt(0).toUpperCase() + program.type.slice(1)}</div>` : ''}
                     ${program.summary ? `<div style="font-size: 0.8rem; color: #ddd; margin-top: 0.25rem; line-height: 1.3;">${program.summary}</div>` : ''}
                 </div>
