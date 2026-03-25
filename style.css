@@ -1064,14 +1064,11 @@ kbd {
     position: absolute; left: 0; right: 0;
     opacity: 0; pointer-events: none; transition: opacity 0.3s;
     z-index: 10;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%);
+    background: rgba(0,0,0,0.9);
     border: none;
 }
 .video-player-container.theatre-mode .video-header { top: 0; }
-.video-player-container.theatre-mode .video-details {
-    bottom: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
-}
+.video-player-container.theatre-mode .video-details { bottom: 0; }
 .video-player-container.theatre-mode.panels-visible .video-header,
 .video-player-container.theatre-mode.panels-visible .video-details {
     opacity: 1; pointer-events: auto;
